@@ -57,12 +57,13 @@ export function crearParrafoFunction(params) {
 
   // Establecer la imagen de fondo cuando se acepta una URL
   btnAceptarURL.addEventListener('click', function () {
-    let url = inputURL.value;
-    if (url) {
-      nuevoParrafo.style.backgroundImage = `url(${url})`;
-      nuevoParrafo.textContent = ''; // Eliminar texto cuando se asigna la imagen
-    }
-    inputURLDiv.style.display = 'none'; // Ocultar el input
+    insertarDataDeURL(nuevoParrafo, inputURL, 'parrafo');
+    // let url = inputURL.value;
+    // if (url) {
+    //   nuevoParrafo.style.backgroundImage = `url(${url})`;
+    //   nuevoParrafo.textContent = ''; // Eliminar texto cuando se asigna la imagen
+    // }
+    // inputURLDiv.style.display = 'none'; // Ocultar el input
   });
 }
 
@@ -111,17 +112,8 @@ export function crearTituloFunction(params) {
   });
 
   // Establecer la imagen de fondo cuando se acepta una URL
-  btnAceptarURL.addEventListener('click', async function () {
-    console.log('Click en btnAceptarURL');
-    let url = inputURL.value;
-    console.log(url);
-    console.log(typeof url);
-
-    let res;
-
-    res = await getDataNotaElTiempo(url, 'titulo');
-    console.log(res);
-    nuevoTitulo.textContent = res;
+  btnAceptarURL.addEventListener('click', function () {
+    insertarDataDeURL(nuevoTitulo, inputURL, 'titulo');
 
     // if (url) {
     //   nuevoTitulo.style.backgroundImage = `url(${url})`;
@@ -129,4 +121,12 @@ export function crearTituloFunction(params) {
     // }
     // inputURLDiv.style.display = 'none'; // Ocultar el input
   });
+}
+
+async function insertarDataDeURL(inputHTML, inputURL, tipoDeElemento) {
+  console.log('Click en btnAceptarURL');
+  let url = inputURL.value;
+  let res = await getDataNotaElTiempo(url, tipoDeElemento);
+  console.log(res);
+  inputHTML.textContent = res;
 }

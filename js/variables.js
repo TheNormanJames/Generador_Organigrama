@@ -10,8 +10,7 @@ export let numParrafo = 0;
 export let numTitulo = 0;
 
 // Extras
-export const urlNotaElTiempo =
-  'http://127.0.0.1:5500/miniFigma/notaElTiempo.html';
+export const urlNotaElTiempo = 'http://127.0.0.1:5500/notaElTiempo.html';
 
 //#endregion //! Variables
 

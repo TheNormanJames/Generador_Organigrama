@@ -6,9 +6,10 @@ export async function getDataNotaElTiempo(
   urlNotaElTiempoProps,
   tipoDeElemento
 ) {
-  console.log(urlNotaElTiempoProps, tipoDeElemento);
+  // console.log(urlNotaElTiempoProps, tipoDeElemento);
   const tiposDeElementos = {
     titulo: 'titulo',
+    parrafo: 'parrafo',
   };
 
   let respuesta = await fetch(urlNotaElTiempoProps ?? urlNotaElTiempo);
@@ -17,54 +18,34 @@ export async function getDataNotaElTiempo(
   const parser = new DOMParser();
   const doc = parser.parseFromString(data, 'text/html');
 
+  let respuestaEnTexto;
+
   if (tiposDeElementos[tipoDeElemento] === 'titulo') {
-    let resTitulo = doc.querySelector('.c-articulo__titulo').textContent;
-    return new Promise((resolve, reject) => {
-      resolve(resTitulo);
-    });
+    respuestaEnTexto = doc.querySelector('.c-articulo__titulo').textContent;
   }
+  if (tiposDeElementos[tipoDeElemento] === 'parrafo') {
+    respuestaEnTexto = doc.querySelector('[name="description"]').content;
+  }
+  return new Promise((resolve) => {
+    resolve(respuestaEnTexto);
+  });
 
-  // await fetch(urlNotaElTiempoProps ?? urlNotaElTiempo)
-  //   .then((response) => response.text())
-  //   .then((data) => {
-  //     //console.log(data)
+  // let resParrafo = doc.querySelectorAll('.paragraph');
 
-  //     // Crear un objeto DOM para analizar el HTML
-  //     const parser = new DOMParser();
-  //     const doc = parser.parseFromString(data, 'text/html');
+  // resParrafo.forEach((resp) => {
+  //   console.log(resp.textContent);
 
-  //     //console.log(parser)
-  //     console.log(doc);
-  //     if (tiposDeElementos[tipoDeElemento] === 'titulo') {
-  //       let resTitulo = doc.querySelector('.c-articulo__titulo').textContent;
-  //       console.log(resTitulo);
+  //document.getElementById("parrafo").appendChild(resp.textContent)
+  // });
 
-  //       new Promise((resolve, reject) => {
-  //         return resolve(resTitulo);
-  //       });
-  //       // return {resTitulo};
-  //     }
+  // Seleccionamos solo el contenido relevante (en este caso, el artículo)
+  // const contenido = doc.querySelector('div.article-body'); // Suponiendo que el artículo está en un div con clase "article-body"
 
-  //     // console.log(resTitulo.textContent);
-
-  //     // document.getElementById('titulo').innerText = resTitulo.textContent;
-
-  //     // let resParrafo = doc.querySelectorAll('.paragraph');
-
-  //     // resParrafo.forEach((resp) => {
-  //     //   console.log(resp.textContent);
-
-  //     //   //document.getElementById("parrafo").appendChild(resp.textContent)
-  //     // });
-
-  //     /* // Seleccionamos solo el contenido relevante (en este caso, el artículo)
-  //   const contenido = doc.querySelector('div.article-body'); // Suponiendo que el artículo está en un div con clase "article-body"
-
-  //   // Extraemos el texto y lo mostramos
-  //   const texto = contenido
-  //     ? contenido.innerText
-  //     : 'No se pudo extraer el contenido';
-  //   document.getElementById('resultado').innerText = texto; */
+  // Extraemos el texto y lo mostramos
+  // const texto = contenido
+  //   ? contenido.innerText
+  //   : 'No se pudo extraer el contenido';
+  // document.getElementById('resultado').innerText = texto;
   //   })
   //   .catch((error) => console.error('Error:', error));
 }
