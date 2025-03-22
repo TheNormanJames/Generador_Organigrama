@@ -1,0 +1,314 @@
+ (function () {
+    tp = window["tp"] || [];
+
+    /* Checkout related */
+    /**
+     * Event properties
+     *
+     * chargeAmount - amount of purchase
+     * chargeCurrency
+     * uid
+     * email
+     * expires
+     * rid
+     * startedAt
+     * termConversionId
+     * termId
+     * promotionId
+     * token_list
+     * cookie_domain
+     * user_token
+     *
+     */
+  
+    function myURL(){
+     	window.location.replace("https://www.eltiempo.com/carrusel-onboarding");
+    }
+  
+    function myURLDigitalIndex(){
+      window.location.replace("https://www.eltiempo.com/");
+     }
+  
+    /* Función encargada de realizar redireccionamiento para flujo Club-Vivamos */
+    function myURLAlianzas(){
+     window.location.replace("https://eltiempo.com/?club-vivamos");
+    }
+  
+    /* Función encargada de validar los terminos aprobados en Piano para permitir activar beneficio club-vivamos
+  	Retorna true o false de acuerdo a la validación de los terminos */
+    function validateTermId(termId) {
+
+      const terms = ["TM23MKI8JR0E"];
+
+      const termsCampaing = [
+        "TM3A0Z1EJZLZ", // Piano_Bravissimo
+        "TM9FESKNMR95", // RevistaCredencial_2Meses          
+        "TMACQYW1IONF", // RevistaCredencial_3Meses
+        "TMS8TYL5QD9G", // RevistaCredencial_5Meses
+        "TMSN4OWN3B4L", // Landing_Flynet
+        "TMGY7LN8TKI2", // LandingWinSports_Redimir
+        "TMK4250A5Y09", // Landing_60Dias_Redimir
+        "TM0PN6I3U2I7", // DC_Landing_UnivalleRedencion
+        "TMR0978ID68S" // DC_Landing_Scotiabank
+      ];
+  
+      return {
+        isTerm: terms.includes(termId),
+        isCampaingTerm: termsCampaing.includes(termId),
+      };
+    }
+  
+    function onCheckoutComplete(data) {
+      
+      const { isTerm, isCampaingTerm } = validateTermId(data.termId);
+
+      switch (data.type) {
+        case "payment":
+          if (isTerm) {
+            setTimeout(myURL, 60000);
+          }
+          /* Flujo Condicional para activar beneficio club-vivamos */
+          if (isCampaingTerm) {
+            setTimeout(myURLAlianzas, 2000);
+          }
+          setTimeout(myURLDigitalIndex, 60000);
+          break;
+    
+        case "registration":
+          setTimeout(myURLDigitalIndex, 60000);
+          break;
+    
+        default:
+          setTimeout(myURLDigitalIndex, 60000);
+      }
+    }
+  
+    /* Read individual cookie values SWG */    
+    function getCookie(nameCookie) {
+      console.log('[getCookie]', 'nameCookie', nameCookie);
+      let list = document.cookie.split(";");
+      console.log('[getCookie]', 'list', list);
+      for (i in list) {
+        let search = list[i].search(nameCookie);
+        if (search > -1) {
+          mycookie=list[i]
+        }
+      }
+      let same = mycookie.indexOf("=");
+      let value = mycookie.substring(same+1);
+      return value;
+    }
+  
+  	/* Set the cookie set at checkout SWG */ 
+    function setDatalayerSwg(callback){
+      console.log('[setDatalayerSwg]', 'start');
+      let infoCookie = getCookie('swgInfo');
+      console.log('[setDatalayerSwg]', 'infoCookie:', infoCookie);
+      let infoCookieArray = infoCookie.split('|');
+      console.log('[setDatalayerSwg]', 'infoCookieArray:', infoCookieArray);
+      let infoSWGArray = [];
+
+      infoCookieArray.forEach(function(value){
+        let paramInfoCookie = value.split(':');
+        infoSWGArray[paramInfoCookie[0]] = paramInfoCookie[1];
+      });
+      console.log('[setDatalayerSwg]', 'infoSWGArray:', infoSWGArray);
+      
+      let objectToPush = {
+          'event':'complete',
+          "postMessageData": {
+              "params": {
+                  "paymentTypeId": infoSWGArray['paymentmethod'],
+                  "term":{
+                      name: infoSWGArray['titleTerm'],
+                      termId: infoSWGArray['term'],
+                      description: infoSWGArray['descriptionTerm'],
+                      "resource": { 
+                          "rid": infoSWGArray['rid']
+                       },          
+                      "billingPlanTable": [
+                          { 
+                          "period": infoSWGArray['period'],
+                          "priceValue": infoSWGArray['price'],
+                          }
+                      ]
+                  }
+              }
+          }
+      };
+      console.log('[setDatalayerSwg]', 'dataLayer object to push:', objectToPush);
+      dataLayer.push(objectToPush);
+      console.log('[setDatalayerSwg]', 'metricas');
+      /* Luego, cuando desees ejecutar el callback, verificar si la variable callback que se pasa como 
+      	argumento es una función antes de ejecutarla */
+      console.log('[setDatalayerSwg]', 'typeof callback', typeof callback);
+      if (typeof callback === 'function') {
+         console.log('[setDatalayerSwg]', 'executing callback function');
+         callback();
+         console.log('[setDatalayerSwg]', 'finished executing callback function')
+      }
+  	}  
+  
+    /* When pressing the SWG button */  
+    function onCheckoutExternalEvent(event) {
+      console.log('2023/10/09 4:33');
+      console.log("onCheckoutExternalEvent"+event);
+      console.log(event);
+      let expiresdate = new Date();
+      let swgInfo = "paymentmethod:"+ event.params.paymentmethod +  "|period:" + event.params.period  +
+          "|price:" + event.params.price + "|rid: " + event.params.rid + "|term:" + event.params.term   +
+          "|titleTerm:" + event.params.titleterm + "|descriptionTerm:" + event.params.descriptionterm ;
+      expiresdate.setDate(expiresdate.getDate() + 1);
+      document.cookie = "swgInfo="+swgInfo + "; expires=" + expiresdate.toUTCString()+"; path=/";
+    }
+
+    function onCheckoutClose(event) {
+        console.log("onCheckoutClose - 1");
+
+        /* Default behavior is to refresh the page on successful checkout */
+        if (event && event.state == "checkoutCompleted") {
+          window.location.replace("https://www.eltiempo.com/");  
+          //location.reload();
+        }
+    }
+
+    function onCheckoutCancel() {
+      console.log("onCheckoutCancel");
+    }
+
+    function onCheckoutError() {
+        console.log("onCheckoutError");
+    }
+
+    function onCheckoutSubmitPayment(event) {
+      const { isCampaingTerm } = validateTermId(event.termId);
+
+      if (isCampaingTerm) {
+        setTimeout(myURLAlianzas, 4000);
+      }
+    }
+
+    /* Meter callback */
+    function onMeterExpired() {
+		 console.log("onMeterExpired");
+    }
+
+    /* Meter callback */
+    function onMeterActive() {
+      console.log("onMeterActive");
+
+    }
+
+    /* Callback executed when a user must login */
+    function onLoginRequired() {
+        // this is a reference implementation only
+        // your own custom login/registration implementation would
+        // need to return the tinypass-compatible userRef inside the callback
+
+        // mysite.showLoginRegistration(function (tinypassUserRef)
+        // tp.push(["setUserRef", tinypassUserRef]); // tp.offer.startCheckout(params); // }
+        // this will prevent the tinypass error screen from displaying
+
+        return false;
+    }
+
+    /* Callback executed after a tinypassAccounts login */
+    function onLoginSuccess() {
+    }
+
+    /* Callback executed after an experience executed successfully */
+    function onExperienceExecute(event) {
+      //console.log("ingresa experienceExecute");
+    }
+
+    /* Callback executed if experience execution has been failed */
+    function onExperienceExecutionFailed(event) {
+    }
+
+    /* Reload page at checkout SWG */
+    function reloadPage(event) {
+      console.log('2023/10/09 04:33 Reload page');	
+      console.log(event);
+		if (event.type == 'swg') {
+          var userToken = tp.pianoIdLite.getToken(); 
+          console.log('token ', userToken);
+          location.href = 'https://seg.eltiempo.com/server/login/swg/eltiempodigital/authorization_code/code/' + userToken;
+        } else {
+          console.log("No swg");
+          location.href = 'https://www.eltiempo.com';
+        }    		
+	} 
+  
+    /* Callback executed if external checkout has been completed successfully SWG */
+    function onExternalCheckoutComplete(event) {
+        /* Default behavior is to refresh the page on successful checkout */
+        console.log("onExternalCheckoutComplete 20/10/2023");
+        console.log(event);
+        
+      	// Se llama función que setea las cookies para las metricas
+        if (event.flow == 'loginPrompt' || event.flow == 'deferredAccountCreation') {
+          // Si es cuentas diferidas autentica al usuario o crea el registro
+            reloadPage(event); 
+          
+        } else if(event.flow == 'buy') {
+          	// si es una compra nueva
+            setDatalayerSwg (function() {
+            // se llama la función que recarga la página o autentica el usuario
+            setTimeout(reloadPage, 6000, event);
+      	  }); 
+        }
+    }
+  
+    tp.push(["setAid", '3ST2fSyHpu']);
+  	tp.push(["setCxenseSiteId", "1139721983214147178"])
+    tp.push(["setEndpoint", 'https://buy.tinypass.com/api/v3']);
+    tp.push(["setUseTinypassAccounts", false ]);
+tp.push(["setUsePianoIdUserProvider", false ]);
+tp.push(["setUsePianoIdLiteUserProvider", true ]);
+
+
+    /* checkout related events */
+    tp.push(["addHandler", "checkoutComplete", onCheckoutComplete]);
+    tp.push(["addHandler", "checkoutClose", onCheckoutClose]);
+    tp.push(["addHandler", "checkoutCustomEvent", onCheckoutExternalEvent]);
+    tp.push(["addHandler", "checkoutCancel", onCheckoutCancel]);
+    tp.push(["addHandler", "checkoutError", onCheckoutError]);
+    tp.push(["addHandler", "checkoutSubmitPayment", onCheckoutSubmitPayment]);
+
+    /* user login events */
+    tp.push(["addHandler", "loginRequired", onLoginRequired]);
+    tp.push(["addHandler", "loginSuccess", onLoginSuccess]);
+
+    /* meter related */
+    tp.push(["addHandler", "meterExpired", onMeterExpired]);
+    tp.push(["addHandler", "meterActive", onMeterActive]);
+
+    tp.push(["addHandler", "experienceExecute", onExperienceExecute]);
+    tp.push(["addHandler", "experienceExecutionFailed", onExperienceExecutionFailed]);
+
+    /* external checkout related events */
+    tp.push(["addHandler", "externalCheckoutComplete", onExternalCheckoutComplete]);
+  	
+  	/* Funcion para retirar X de los formularios - ya que permite cerrar y leer contenido cerrado */
+ 	tp.push(["addHandler", "startCheckout", function(event){
+        setInterval(function () {
+          if((!event.experienceId) && (window.location.href != 'https://www.eltiempo.com/suscripcion-digital')){
+            var closeButton = document.querySelector('.tp-close');
+            if (closeButton) {
+              closeButton.style.display = 'none';
+            }  
+          }
+        },1000);
+      }]); 
+
+    /*tp.push(["init", function () {
+        tp.experience.init();
+    }]);*/
+})();
+
+
+    // do not change this section
+    // |BEGIN INCLUDE TINYPASS JS|
+    (function(src){var a=document.createElement("script");a.type="text/javascript";a.async=true;a.src=src;var b=document.getElementsByTagName("script")[0];b.parentNode.insertBefore(a,b)})("//cdn.tinypass.com/api/tinypass.min.js");
+    // |END   INCLUDE TINYPASS JS|
+

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="Generador MiniFigma" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arrastrar y Editar Líneas</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="index.js" type="module" defer></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+  </head>
+  <body>
+    <button id="crearElemento">Crear Nuevo Elemento</button>
+    <button id="crearLineaVertical">Crear Línea Vertical</button>
+    <button id="crearLineaHorizontal">Crear Línea Horizontal</button>
+    <button id="crearTitulo">Crear Título</button>
+
+    <button id="crearParrafo">Crear Párrafo</button>
+
+    <input
+      type="file"
+      id="cargarImagen"
+      style="display: none"
+      accept="image/*"
+    />
+    <div class="botones-ajuste">
+      <button id="aumentarLinea" disabled>+</button>
+      <button id="disminuirLinea" disabled>-</button>
+    </div>
+  </body>
+</html>
