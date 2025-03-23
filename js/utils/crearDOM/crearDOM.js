@@ -1,14 +1,122 @@
 import {
+  activarBotonesDeTamano,
+  agregarSeleccion,
   hacerArrastrable,
   hacerRedimensionable,
 } from '../../funciones_Carlos.js';
 import {
+  numCirculo,
   numParrafo,
   numTitulo,
+  setNumCirculo,
   setNumParrafo,
   setNumTitulo,
 } from '../../variables.js';
 import { getDataNotaElTiempo } from '../getData.js';
+
+export function crearNuevoElemento() {
+  setNumCirculo(numCirculo + 1);
+
+  let nuevoElemento = document.createElement('div');
+  nuevoElemento.classList.add('movible');
+  nuevoElemento.classList.add('circulo_' + numCirculo);
+
+  //nuevoElemento.textContent = "Arrástrame";
+
+  nuevoElemento.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+  nuevoElemento.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+
+  document.body.appendChild(nuevoElemento);
+
+  hacerArrastrable(nuevoElemento);
+  agregarSeleccion(nuevoElemento);
+
+  let iconoSubir = document.createElement('i');
+  iconoSubir.classList.add('fas', 'fa-upload', 'icono-subir-imagen');
+  nuevoElemento.appendChild(iconoSubir);
+
+  iconoSubir.addEventListener('click', function (e) {
+    document.getElementById('cargarImagen').click();
+  });
+
+  let iconoURL = document.createElement('i');
+  iconoURL.classList.add('fas', 'fa-link', 'icono-url');
+  nuevoElemento.appendChild(iconoURL);
+
+  let inputURLDiv = document.createElement('div');
+  inputURLDiv.classList.add('input-url');
+  let inputURL = document.createElement('input');
+  inputURL.type = 'text';
+  inputURL.placeholder = 'Introduce una URL';
+  let btnAceptarURL = document.createElement('button');
+  btnAceptarURL.textContent = 'Aceptar';
+
+  inputURLDiv.appendChild(inputURL);
+  inputURLDiv.appendChild(btnAceptarURL);
+  nuevoElemento.appendChild(inputURLDiv);
+
+  iconoURL.addEventListener('click', function (e) {
+    e.stopPropagation();
+    inputURLDiv.style.display = 'flex'; // Mostrar el input
+  });
+
+  btnAceptarURL.addEventListener('click', function () {
+    // let url = inputURL.value;
+    console.log('Click en btnAceptarURL');
+    insertarDataDeURL(nuevoElemento, inputURL, 'imagen');
+
+    // if (url) {
+    //   nuevoElemento.style.backgroundImage = `url(${url})`;
+    //   nuevoElemento.textContent = ''; // Eliminar texto cuando se asigna la imagen
+    // }
+    inputURLDiv.style.display = 'none'; // Ocultar el input
+  });
+
+  let iconoBorrar = document.createElement('i');
+  iconoBorrar.classList.add('fas', 'fa-trash', 'icono-borrar');
+  nuevoElemento.appendChild(iconoBorrar);
+
+  iconoBorrar.addEventListener('click', function (e) {
+    e.stopPropagation();
+    nuevoElemento.remove(); // Eliminar el elemento
+  });
+}
+
+export function crearLineaVertical() {
+  let nuevaLinea = document.createElement('div');
+  nuevaLinea.classList.add('linea', 'linea-vertical');
+
+  let altura = Math.random() * 200 + 100;
+
+  nuevaLinea.style.left = Math.random() * (window.innerWidth - 2) + 'px';
+  nuevaLinea.style.top = Math.random() * (window.innerHeight - altura) + 'px';
+
+  nuevaLinea.style.height = altura + 'px';
+
+  document.body.appendChild(nuevaLinea);
+
+  hacerArrastrable(nuevaLinea);
+  agregarSeleccion(nuevaLinea);
+  activarBotonesDeTamano(nuevaLinea);
+}
+
+export function crearLineaHorizontal() {
+  let nuevaLinea = document.createElement('div');
+  nuevaLinea.classList.add('linea', 'linea-horizontal');
+
+  let ancho = Math.random() * 200 + 100;
+
+  nuevaLinea.style.left = Math.random() * (window.innerWidth - ancho) + 'px';
+  nuevaLinea.style.top = Math.random() * (window.innerHeight - 2) + 'px';
+
+  nuevaLinea.style.width = ancho + 'px';
+
+  document.body.appendChild(nuevaLinea);
+
+  hacerArrastrable(nuevaLinea);
+  agregarSeleccion(nuevaLinea);
+  activarBotonesDeTamano(nuevaLinea);
+}
 
 export function crearParrafoFunction(params) {
   setNumParrafo(numParrafo + 1);
@@ -128,5 +236,12 @@ async function insertarDataDeURL(inputHTML, inputURL, tipoDeElemento) {
   let url = inputURL.value;
   let res = await getDataNotaElTiempo(url, tipoDeElemento);
   console.log(res);
-  inputHTML.textContent = res;
+  if (tipoDeElemento === 'imagen') {
+    console.log(inputHTML);
+    inputHTML.style.backgroundImage = `url(${res})`;
+
+    // inputHTML.textContent = res;
+  } else {
+    inputHTML.textContent = res;
+  }
 }

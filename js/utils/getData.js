@@ -8,6 +8,7 @@ export async function getDataNotaElTiempo(
 ) {
   // console.log(urlNotaElTiempoProps, tipoDeElemento);
   const tiposDeElementos = {
+    imagen: 'imagen',
     titulo: 'titulo',
     parrafo: 'parrafo',
   };
@@ -20,6 +21,11 @@ export async function getDataNotaElTiempo(
 
   let respuestaEnTexto;
 
+  if (tiposDeElementos[tipoDeElemento] === 'imagen') {
+    respuestaEnTexto = doc.querySelector(
+      '.c-articulo-apertura__media__thumb img'
+    ).src;
+  }
   if (tiposDeElementos[tipoDeElemento] === 'titulo') {
     respuestaEnTexto = doc.querySelector('.c-articulo__titulo').textContent;
   }

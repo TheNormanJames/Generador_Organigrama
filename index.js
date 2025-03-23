@@ -2,8 +2,6 @@ import {
   crearLineaHorizontal,
   crearLineaVertical,
   crearNuevoElemento,
-} from './js/funciones_Carlos.js';
-import {
   crearParrafoFunction,
   crearTituloFunction,
 } from './js/utils/crearDOM/crearDOM.js';
