@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MiniFigma</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+      .nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+      #miCanvas {
+        background: #493d3d8b;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <button type="button" id="circleBtn">Circulo</button>
+      <button type="button" id="circleTexto">Texto</button>
+      <button type="button" id="circleFlecha">Flecha</button>
+      <button type="button" id="btnFlechaConectada">btnFlechaConectada</button>
+      <button type="button" id="btnFrente">btnFrente + Shift</button>
+      <button type="button" id="btnFondo">btnFondo + Shift</button>
+      <button type="button" id="btnExportar">btnExportar</button>
+      <!-- <button type="button" id="btnImportar">btnImportar</button> -->
+      <input type="file" name="btnImportar" id="btnImportar" />
+    </nav>
+    <canvas id="miCanvas" width="500" height="500"></canvas>
+
+    <!-- <script src="index.js" type="module"></script> -->
+    <script type="module" src="./archivo_gpt.js"></script>
+  </body>
+</html>
