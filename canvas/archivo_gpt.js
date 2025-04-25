@@ -1,6 +1,4 @@
-// alert("asd");
-
-// Archivo único optimizado: mini Figma simplificado con flechas conectadas inteligentes y círculos con imagen
+// Archivo único optimizado: mini Figma simplificado
 
 const canvas = document.getElementById('miCanvas');
 const ctx = canvas.getContext('2d');
@@ -9,9 +7,25 @@ let objetos = [],
   objetosSeleccionados = [],
   objetoEditando = null,
   conectandoFlecha = false,
-  origenFlecha = null;
+  puntoInicioFlecha = null;
 let arrastrando = false;
 const gridSize = 20;
+
+// Crear popup flotante
+const popup = document.createElement('div');
+popup.style.position = 'absolute';
+popup.style.padding = '10px';
+popup.style.background = 'white';
+popup.style.border = '1px solid black';
+popup.style.display = 'none';
+popup.innerHTML = `
+  <input type="text" placeholder="URL de imagen" id="imgUrl" style="display:block; margin-bottom:5px; width: 200px;"/>
+  <input type="file" id="imgFile" accept="image/*"/>
+`;
+document.body.appendChild(popup);
+
+const imgUrlInput = popup.querySelector('#imgUrl');
+const imgFileInput = popup.querySelector('#imgFile');
 
 // Utilidades
 const dibujar = () => {
@@ -37,19 +51,22 @@ const guardarHistorial = (() => {
 
 // Clases
 class Circulo {
-  constructor(x, y, radio, color, imagenURL = null) {
-    Object.assign(this, { x, y, radio, color, seleccionado: false, imagenURL });
-    if (imagenURL) {
-      this.imagen = new Image();
-      this.imagen.src = imagenURL;
-    }
+  constructor(x, y, radio, color) {
+    Object.assign(this, {
+      x,
+      y,
+      radio,
+      color,
+      seleccionado: false,
+      imagen: null,
+    });
   }
   dibujar(ctx) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
-    ctx.clip();
-    if (this.imagenURL && this.imagen?.complete) {
+    if (this.imagen) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radio, 0, Math.PI * 2);
+      ctx.clip();
       ctx.drawImage(
         this.imagen,
         this.x - this.radio,
@@ -57,16 +74,16 @@ class Circulo {
         this.radio * 2,
         this.radio * 2
       );
+      ctx.restore();
     } else {
       ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
       ctx.fill();
     }
-    ctx.restore();
     if (this.seleccionado) {
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
       ctx.stroke();
     }
   }
@@ -76,48 +93,93 @@ class Circulo {
 }
 
 class Texto {
-  constructor(x, y, texto, fontSize = 16, color = 'black') {
-    Object.assign(this, { x, y, texto, fontSize, color, seleccionado: false });
+  constructor(x, y, texto, fontSize = 16, color = 'black', ancho = 200) {
+    Object.assign(this, {
+      x,
+      y,
+      texto,
+      fontSize,
+      color,
+      seleccionado: false,
+      ancho,
+    });
   }
   dibujar(ctx) {
     ctx.fillStyle = this.color;
     ctx.font = `${this.fontSize}px Arial`;
-    ctx.fillText(this.texto, this.x, this.y);
+    const lineas = [];
+    let palabras = this.texto.split(' ');
+    let linea = '';
+    for (let palabra of palabras) {
+      const prueba = linea + palabra + ' ';
+      if (ctx.measureText(prueba).width > this.ancho) {
+        lineas.push(linea);
+        linea = palabra + ' ';
+      } else {
+        linea = prueba;
+      }
+    }
+    lineas.push(linea);
+
+    lineas.forEach((l, i) => {
+      ctx.fillText(l.trim(), this.x, this.y + i * (this.fontSize + 4));
+    });
+
     if (this.seleccionado) {
+      const alto = lineas.length * (this.fontSize + 4);
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 1;
-      const w = this.texto.length * this.fontSize * 0.6;
-      ctx.strokeRect(this.x - 5, this.y - this.fontSize, w, this.fontSize + 5);
+      ctx.strokeRect(
+        this.x - 5,
+        this.y - this.fontSize,
+        this.ancho + 10,
+        alto + 10
+      );
       ctx.fillStyle = 'red';
-      ctx.fillRect(this.x + w, this.y - this.fontSize, 8, 8);
+      ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
   }
   contienePunto(x, y) {
-    const w = this.texto.length * this.fontSize * 0.6;
     return (
-      x > this.x && x < this.x + w && y > this.y - this.fontSize && y < this.y
+      x > this.x &&
+      x < this.x + this.ancho &&
+      y > this.y - this.fontSize &&
+      y < this.y + 100 // aproximado para selección
     );
   }
 }
 
 class Flecha {
   constructor(origen, destino, color = 'black') {
-    Object.assign(this, { origen, destino, color });
+    this.origen = origen;
+    this.destino = destino;
+    this.color = color;
   }
   dibujar(ctx) {
+    const { x: x1, y: y1 } = calcularBorde(this.origen, this.destino);
+    const { x: x2, y: y2 } = calcularBorde(this.destino, this.origen);
+
+    const obstaculo = objetos.find(
+      (obj) =>
+        obj !== this.origen &&
+        obj !== this.destino &&
+        intersecta({ x1, y1, x2, y2 }, obj)
+    );
+
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
-    const { x: x1, y: y1 } = puntoBorde(this.origen, this.destino);
-    const { x: x2, y: y2 } = puntoBorde(this.destino, this.origen);
-    const intermedio = detectarObstaculo(x1, y1, x2, y2);
-
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    if (intermedio) {
-      ctx.lineTo(intermedio.x, y1);
-      ctx.lineTo(intermedio.x, y2);
+
+    if (obstaculo) {
+      const medioX = (x1 + x2) / 2;
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(medioX, y1);
+      ctx.lineTo(medioX, y2);
+      ctx.lineTo(x2, y2);
+    } else {
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
     }
-    ctx.lineTo(x2, y2);
     ctx.stroke();
   }
   contienePunto() {
@@ -125,61 +187,58 @@ class Flecha {
   }
 }
 
-function puntoBorde(origen, destino) {
+function calcularBorde(origen, destino) {
   const dx = destino.x - origen.x;
   const dy = destino.y - origen.y;
-  const angulo = Math.atan2(dy, dx);
-  if (origen instanceof Circulo) {
-    return {
-      x: origen.x + Math.cos(angulo) * origen.radio,
-      y: origen.y + Math.sin(angulo) * origen.radio,
-    };
-  }
-  return { x: origen.x, y: origen.y };
+  const ang = Math.atan2(dy, dx);
+  const r = origen.radio || 0;
+  return {
+    x: origen.x + r * Math.cos(ang),
+    y: origen.y + r * Math.sin(ang),
+  };
 }
 
-function detectarObstaculo(x1, y1, x2, y2) {
-  for (const obj of objetos) {
-    if (!(obj instanceof Flecha)) {
-      const colision = obj.contienePunto((x1 + x2) / 2, (y1 + y2) / 2);
-      if (colision) return { x: (x1 + x2) / 2 + 40 };
-    }
+function intersecta(linea, obj) {
+  const margen = 10;
+  const minX = Math.min(linea.x1, linea.x2);
+  const maxX = Math.max(linea.x1, linea.x2);
+  const minY = Math.min(linea.y1, linea.y2);
+  const maxY = Math.max(linea.y1, linea.y2);
+
+  if (obj instanceof Circulo) {
+    return (
+      obj.x + obj.radio > minX - margen &&
+      obj.x - obj.radio < maxX + margen &&
+      obj.y + obj.radio > minY - margen &&
+      obj.y - obj.radio < maxY + margen
+    );
+  } else if (obj instanceof Texto) {
+    return (
+      obj.x < maxX + margen &&
+      obj.x + obj.ancho > minX - margen &&
+      obj.y < maxY + margen &&
+      obj.y > minY - margen
+    );
   }
-  return null;
+  return false;
 }
 
 // Agregar objetos
 const crear = (tipo) => {
   if (tipo === 'circulo') objetos.push(new Circulo(100, 100, 30, 'blue'));
   else if (tipo === 'texto') objetos.push(new Texto(150, 150, 'Hola!', 18));
+  else if (tipo === 'flechaConectada') conectandoFlecha = true;
   dibujar();
 };
 
 document.getElementById('circleBtn').onclick = () => crear('circulo');
 document.getElementById('circleTexto').onclick = () => crear('texto');
-document.getElementById('circleFlecha').onclick = () => {
-  conectandoFlecha = true;
-  origenFlecha = null;
-};
+document.getElementById('circleFlecha').onclick = () =>
+  crear('flechaConectada');
 
 // Interacción
 let offsets = new Map();
 canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
-  if (conectandoFlecha) {
-    const objetivo = objetos.find((obj) => obj.contienePunto(offsetX, offsetY));
-    if (objetivo) {
-      if (!origenFlecha) {
-        origenFlecha = objetivo;
-      } else {
-        objetos.push(new Flecha(origenFlecha, objetivo));
-        conectandoFlecha = false;
-        origenFlecha = null;
-        dibujar();
-      }
-    }
-    return;
-  }
-
   arrastrando = true;
   objetosSeleccionados = objetos.filter((obj) => {
     if (obj.contienePunto(offsetX, offsetY)) {
@@ -189,6 +248,18 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
     }
     return false;
   });
+
+  if (conectandoFlecha && objetosSeleccionados.length === 1) {
+    if (!puntoInicioFlecha) {
+      puntoInicioFlecha = objetosSeleccionados[0];
+    } else {
+      const flecha = new Flecha(puntoInicioFlecha, objetosSeleccionados[0]);
+      objetos.unshift(flecha); // para que esté al fondo
+      conectandoFlecha = false;
+      puntoInicioFlecha = null;
+    }
+  }
+
   guardarHistorial();
   dibujar();
 });
@@ -212,54 +283,91 @@ canvas.addEventListener('mouseup', () => {
   dibujar();
 });
 
-// Popup imagen
-const popup = document.createElement('div');
-popup.innerHTML = `
-  <input type="text" placeholder="URL de imagen" id="imgURL" style="width: 160px" />
-  <input type="file" id="imgFile" accept="image/*" />
-  <button id="btnImgOK">OK</button>
-`;
-popup.style.position = 'absolute';
-popup.style.display = 'none';
-popup.style.background = 'white';
-popup.style.border = '1px solid black';
-popup.style.padding = '4px';
-popup.style.zIndex = 10;
-document.body.appendChild(popup);
-
-canvas.addEventListener('dblclick', ({ offsetX, offsetY }) => {
-  for (const obj of objetos) {
-    if (obj instanceof Circulo && obj.contienePunto(offsetX, offsetY)) {
-      objetoEditando = obj;
-      popup.style.left = `${offsetX + canvas.offsetLeft}px`;
-      popup.style.top = `${offsetY + canvas.offsetTop}px`;
-      popup.style.display = 'block';
-      break;
+canvas.addEventListener(
+  'dblclick',
+  ({ clientX, clientY, offsetX, offsetY }) => {
+    for (const obj of objetos) {
+      if (obj instanceof Circulo && obj.contienePunto(offsetX, offsetY)) {
+        mostrarPopup(obj, clientX, clientY);
+        return;
+      }
+      if (obj instanceof Texto && obj.contienePunto(offsetX, offsetY)) {
+        objetoEditando = obj;
+        obj.seleccionado = true;
+        document.addEventListener('keydown', manejarEntrada);
+        canvas.addEventListener('mousedown', finalizarEdicion);
+        return;
+      }
     }
+  }
+);
+
+function mostrarPopup(circulo, x, y) {
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  popup.style.display = 'block';
+  imgUrlInput.value = '';
+  imgFileInput.value = '';
+
+  const listenerUrl = () => {
+    const url = imgUrlInput.value;
+    const img = new Image();
+    img.onload = () => {
+      circulo.imagen = img;
+      dibujar();
+      ocultarPopup();
+    };
+    img.src = url;
+  };
+
+  imgUrlInput.onchange = listenerUrl;
+  imgFileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          circulo.imagen = img;
+          dibujar();
+          ocultarPopup();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ocultarPopup();
+    finalizarEdicion();
   }
 });
 
-document.getElementById('btnImgOK').onclick = () => {
-  const url = document.getElementById('imgURL').value;
-  const file = document.getElementById('imgFile').files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      objetoEditando.imagenURL = reader.result;
-      objetoEditando.imagen = new Image();
-      objetoEditando.imagen.src = reader.result;
-      popup.style.display = 'none';
-      dibujar();
-    };
-    reader.readAsDataURL(file);
-  } else if (url) {
-    objetoEditando.imagenURL = url;
-    objetoEditando.imagen = new Image();
-    objetoEditando.imagen.src = url;
-    popup.style.display = 'none';
-    dibujar();
-  }
-};
+function ocultarPopup() {
+  popup.style.display = 'none';
+  imgUrlInput.value = '';
+  imgFileInput.value = '';
+}
+
+function manejarEntrada(e) {
+  if (!objetoEditando) return;
+  if (e.key === 'Escape') return finalizarEdicion();
+  if (e.key === 'Backspace')
+    objetoEditando.texto = objetoEditando.texto.slice(0, -1);
+  else if (e.key.length === 1) objetoEditando.texto += e.key;
+  dibujar();
+}
+
+function finalizarEdicion() {
+  if (objetoEditando) objetoEditando.seleccionado = false;
+  objetoEditando = null;
+  document.removeEventListener('keydown', manejarEntrada);
+  canvas.removeEventListener('mousedown', finalizarEdicion);
+  dibujar();
+}
 
 // Z-index
 const moverZ = (dir) => {
@@ -295,17 +403,18 @@ document.getElementById('btnImportar').onchange = (e) => {
       const parsed = JSON.parse(target.result);
       objetos = parsed
         .map((obj) => {
-          if (obj.radio)
-            return new Circulo(
+          if (obj.radio) return new Circulo(obj.x, obj.y, obj.radio, obj.color);
+          if (obj.texto)
+            return new Texto(
               obj.x,
               obj.y,
-              obj.radio,
+              obj.texto,
+              obj.fontSize,
               obj.color,
-              obj.imagenURL
+              obj.ancho
             );
-          if (obj.texto)
-            return new Texto(obj.x, obj.y, obj.texto, obj.fontSize, obj.color);
-          if (obj.origen && obj.destino) return null;
+          if (obj.origen && obj.destino)
+            return new Flecha(obj.origen, obj.destino, obj.color);
           return null;
         })
         .filter(Boolean);
@@ -329,20 +438,15 @@ function duplicar() {
   objetosSeleccionados.forEach((obj) => {
     let copia = null;
     if (obj instanceof Circulo)
-      copia = new Circulo(
-        obj.x + 20,
-        obj.y + 20,
-        obj.radio,
-        obj.color,
-        obj.imagenURL
-      );
+      copia = new Circulo(obj.x + 20, obj.y + 20, obj.radio, obj.color);
     else if (obj instanceof Texto)
       copia = new Texto(
         obj.x + 20,
         obj.y + 20,
         obj.texto,
         obj.fontSize,
-        obj.color
+        obj.color,
+        obj.ancho
       );
     if (copia) objetos.push(copia);
   });
