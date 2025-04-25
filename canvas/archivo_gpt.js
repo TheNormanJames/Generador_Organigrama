@@ -128,20 +128,17 @@ class Texto {
       ctx.fillText(l.trim(), this.x, this.y + i * (this.fontSize + 4));
     });
 
-    // if (this.seleccionado) {
-    //   const alto = lineas.length * (this.fontSize + 4);
-    //   ctx.strokeStyle = 'black';
-    //   ctx.lineWidth = 1;
-    //   ctx.strokeRect(
-    //     this.x - 5,
-    //     this.y - this.fontSize,
-    //     this.ancho + 10,
-    //     alto + 10
-    //   );
-    //   ctx.fillStyle = 'red';
-    //   ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
-    // }
     if (this.seleccionado || this === textoRedimensionando) {
+      const alto = lineas.length * (this.fontSize + 4);
+      ctx.strokeStyle = '#000000cc';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        this.x - 5,
+        this.y - this.fontSize,
+        this.ancho + 10,
+        alto + 10
+      );
+
       ctx.fillStyle = 'red';
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
@@ -253,34 +250,44 @@ document.getElementById('circleFlecha').onclick = () =>
 
 // Interacción
 let offsets = new Map();
-canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
+canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
   arrastrando = true;
   textoRedimensionando = null;
+  objetosSeleccionados = [];
 
-  // Ver si hizo clic en el handler de redimensionado
+  // Check si hizo clic sobre un handler de texto
   for (const obj of objetos) {
     if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
       textoRedimensionando = obj;
-      arrastrando = true;
-      return; // solo redimensiona
+      return;
     }
   }
 
-  objetosSeleccionados = objetos.filter((obj) => {
+  // Buscar qué objetos se están tocando
+  for (const obj of objetos) {
     if (obj.contienePunto(offsetX, offsetY)) {
-      obj.seleccionado = true;
+      if (shiftKey) {
+        // Añadir a la selección
+        if (!objetosSeleccionados.includes(obj)) {
+          objetosSeleccionados.push(obj);
+          obj.seleccionado = true;
+        }
+      } else {
+        // Selección única
+        objetos.forEach((o) => (o.seleccionado = false));
+        objetosSeleccionados = [obj];
+        obj.seleccionado = true;
+      }
       offsets.set(obj, { dx: offsetX - obj.x, dy: offsetY - obj.y });
-      return true;
     }
-    return false;
-  });
+  }
 
   if (conectandoFlecha && objetosSeleccionados.length === 1) {
     if (!puntoInicioFlecha) {
       puntoInicioFlecha = objetosSeleccionados[0];
     } else {
       const flecha = new Flecha(puntoInicioFlecha, objetosSeleccionados[0]);
-      objetos.unshift(flecha); // para que esté al fondo
+      objetos.unshift(flecha);
       conectandoFlecha = false;
       puntoInicioFlecha = null;
     }
