@@ -4,37 +4,75 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MiniFigma</title>
-    <style>
-      * {
-        padding: 0;
-        margin: 0;
-        box-sizing: border-box;
-      }
-      .nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-      }
-      #miCanvas {
-        background: #493d3d8b;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body>
-    <nav class="nav">
-      <button type="button" id="circleBtn">Circulo</button>
-      <button type="button" id="circleTexto">Texto</button>
-      <button type="button" id="circleFlecha">Flecha</button>
-      <button type="button" id="btnFlechaConectada">btnFlechaConectada</button>
-      <button type="button" id="btnFrente">btnFrente + Shift</button>
-      <button type="button" id="btnFondo">btnFondo + Shift</button>
-      <button type="button" id="btnExportar">btnExportar</button>
-      <!-- <button type="button" id="btnImportar">btnImportar</button> -->
-      <input type="file" name="btnImportar" id="btnImportar" />
+    <nav class="fixed top-0 left-0 w-full bg-white shadow-md z-10">
+      <div
+        class="flex items-center justify-center space-x-2 p-2 overflow-x-auto"
+      >
+        <button
+          id="circleBtn"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Círculo
+        </button>
+        <button
+          id="circleTexto"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Texto
+        </button>
+        <button
+          id="circleFlecha"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Flecha
+        </button>
+        <button
+          id="btnFrente"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Al Frente
+        </button>
+        <button
+          id="btnFondo"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Al Fondo
+        </button>
+        <button
+          id="btnExportar"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Exportar
+        </button>
+        <label
+          for="btnImportar"
+          class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >Importar</label
+        >
+        <input type="file" id="btnImportar" class="hidden" />
+      </div>
     </nav>
+
     <canvas id="miCanvas" width="500" height="500"></canvas>
 
     <!-- <script src="index.js" type="module"></script> -->
     <script type="module" src="./archivo_gpt.js"></script>
+    <style>
+      .btn {
+        @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition;
+        font-family: sans-serif;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      canvas {
+        margin-top: 60px; /* espacio para el navbar */
+        background: #f4f4f4;
+        display: block;
+      }
+    </style>
   </body>
 </html>

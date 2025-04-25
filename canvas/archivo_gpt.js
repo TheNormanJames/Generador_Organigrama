@@ -251,6 +251,7 @@ document.getElementById('circleFlecha').onclick = () =>
 // Interacción
 let offsets = new Map();
 canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
+  actualizarCursor(offsetX, offsetY);
   arrastrando = true;
   textoRedimensionando = null;
   objetosSeleccionados = [];
@@ -298,6 +299,8 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
 });
 
 canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
+  actualizarCursor(offsetX, offsetY);
+
   let hoverResize = false;
 
   // Mostrar cursor de resize si está sobre handler
@@ -332,12 +335,13 @@ canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
   dibujar();
 });
 
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener('mouseup', ({ offsetX, offsetY }) => {
   arrastrando = false;
   objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
   offsets.clear();
   dibujar();
   textoRedimensionando = null;
+  actualizarCursor(offsetX, offsetY);
 });
 
 canvas.addEventListener(
@@ -415,6 +419,8 @@ function manejarEntrada(e) {
   if (e.key === 'Backspace')
     objetoEditando.texto = objetoEditando.texto.slice(0, -1);
   else if (e.key.length === 1) objetoEditando.texto += e.key;
+  canvas.style.cursor = 'text';
+
   dibujar();
 }
 
@@ -551,6 +557,32 @@ function restaurarEstado(estado) {
     })
     .filter(Boolean);
   dibujar();
+}
+
+function actualizarCursor(offsetX, offsetY) {
+  if (textoRedimensionando) {
+    canvas.style.cursor = 'ew-resize';
+    return;
+  }
+
+  for (const obj of objetos) {
+    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+      canvas.style.cursor = 'ew-resize';
+      return;
+    }
+  }
+
+  if (conectandoFlecha) {
+    canvas.style.cursor = 'crosshair';
+    return;
+  }
+
+  const hovering = objetos.some((obj) => obj.contienePunto(offsetX, offsetY));
+  if (hovering) {
+    canvas.style.cursor = arrastrando ? 'grabbing' : 'move';
+  } else {
+    canvas.style.cursor = 'default';
+  }
 }
 
 dibujar();
