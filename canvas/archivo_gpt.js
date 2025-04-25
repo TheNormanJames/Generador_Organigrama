@@ -3,7 +3,7 @@
 const canvas = document.getElementById('miCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight - 4;
+canvas.height = window.innerHeight - 65;
 
 let objetos = [],
   objetosSeleccionados = [],
@@ -42,6 +42,47 @@ editorTexto.addEventListener('input', () => {
   autosizeTextarea(editorTexto);
 });
 document.body.appendChild(editorTexto);
+
+const barraAlineacion = document.createElement('div');
+Object.assign(barraAlineacion.style, {
+  position: 'absolute',
+  display: 'none',
+  background: '#fff',
+  border: '1px solid #ccc',
+  borderRadius: '6px',
+  padding: '4px',
+  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+  zIndex: '1001',
+  fontFamily: 'sans-serif',
+});
+
+['left', 'center', 'right', 'justify'].forEach((alineacion) => {
+  const btn = document.createElement('button');
+  btn.textContent = alineacion[0].toUpperCase(); // L, C, R, J
+  btn.title = alineacion;
+  Object.assign(btn.style, {
+    margin: '2px',
+    padding: '4px 6px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    border: '1px solid #ccc',
+    background: '#f9f9f9',
+    borderRadius: '4px',
+  });
+  // console.log(objetoEditando);
+  btn.onclick = () => {
+    console.log('asdf');
+
+    if (objetoEditando) {
+      objetoEditando.alineacion = alineacion;
+      editorTexto.style.textAlign = alineacion;
+      console.log(alineacion);
+    }
+  };
+  barraAlineacion.appendChild(btn);
+});
+
+document.body.appendChild(barraAlineacion);
 
 // Crear popup flotante
 const popup = document.createElement('div');
@@ -139,6 +180,7 @@ class Texto {
       seleccionado: false,
       ancho,
     });
+    this.alineacion = 'left'; // por defecto
   }
   dibujar(ctx) {
     ctx.fillStyle = this.color;
@@ -158,7 +200,12 @@ class Texto {
     lineas.push(linea);
 
     lineas.forEach((l, i) => {
-      ctx.fillText(l.trim(), this.x, this.y + i * (this.fontSize + 4));
+      ctx.textAlign = this.alineacion;
+      let textoX = this.x;
+      if (this.alineacion === 'center') textoX = this.x + this.ancho / 2;
+      if (this.alineacion === 'right') textoX = this.x + this.ancho;
+
+      ctx.fillText(l.trim(), textoX, this.y + i * (this.fontSize + 4));
     });
 
     if (this.seleccionado || this === textoRedimensionando) {
@@ -458,12 +505,20 @@ function mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
   editorTexto.style.lineHeight = textoObj.fontSize + 4 + 'px';
   editorTexto.style.fontSize = textoObj.fontSize + 'px';
   editorTexto.style.display = 'block';
+  editorTexto.style.textAlign = textoObj.alineacion || 'left';
+
+  barraAlineacion.style.left = pantallaX + 'px';
+  barraAlineacion.style.top = pantallaY - 40 + 'px';
+  barraAlineacion.style.display = 'flex';
+
   editorTexto.focus();
   autosizeTextarea(editorTexto);
 
   editorTexto.onblur = () => {
     textoObj.texto = editorTexto.value;
     editorTexto.style.display = 'none';
+    barraAlineacion.style.display = 'none';
+
     objetoEditando = null;
     dibujar();
   };
