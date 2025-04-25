@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MiniFigma</title>
+    
+    <!--typekit-->
+    <link rel="stylesheet" href="https://use.typekit.net/mhq4nhy.css">
+
+    <!--CHAT GPT OPEN AI--->
+    <link rel="stylesheet" type="text/css" href="./css/style_CHAT.css?0864442">
+    <!--CHAT GPT OPEN AI--->
+
+
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body>
@@ -58,6 +67,27 @@
 
     <canvas id="miCanvas" width="500" height="500"></canvas>
 
+
+
+    <!----CHAT OPEN AI CARLOS---->
+    <div class="contenedor_principal_chat">
+      <div class="chat-container">
+        <img src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_cerrar.png" class="icono_cerrar">
+        <div class="chat-window" id="chatWindow">
+          <div class="Mensaje user2"><h2>Asistente EL TIEMPO</h2><p>¡Hola! ¿En qué puedo ayudarte hoy?</p></div>
+        </div>
+
+        <form id="chatForm">
+          <input type="text" id="chatInput" placeholder="¿Que buscas?" autocomplete="off">
+          <button type="submit" class="boton_enviar">Enviar</button>
+        </form>
+      </div>
+
+      <img src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_chat.png" class="icono_chat">
+    </div>
+     <!----FIN CHAT OPEN AI CARLOS---->
+
+
     <!-- <script src="index.js" type="module"></script> -->
     <script type="module" src="./archivo_gpt.js"></script>
     <style>
@@ -75,4 +105,8 @@
       }
     </style>
   </body>
+
+  <!--funcion Open AI-->
+  <script type="text/javascript" src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/js/Funcion_ChatOpenAi.js"></script>
+
 </html>

@@ -1,0 +1,148 @@
+
+
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+   /* height: 100vh;*/
+    margin: 0;
+}
+
+
+
+.contenedor_mini_figma {
+    padding: 40px;
+}
+
+.chat-container {
+  width: 400px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-window {
+    height: 400px;
+    overflow-y: scroll;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+
+
+.Mensaje {
+    width: 100%;
+    display: table;
+    margin-bottom: 19px;
+    text-align: right;
+    width: auto;
+    float: right;
+}
+
+.Mensaje.user {
+    width: 100%;
+    display: table;
+    margin-bottom: 19px;
+    text-align: right;
+    float: right;
+}
+
+.Mensaje.user h2 {
+    font-size: 17px;
+    margin-bottom: 6px;
+    color: #1a73e8;
+}
+
+.Mensaje.user2 {
+    width: 100%;
+}
+
+.Mensaje.user2 h2 {
+    font-size: 17px;
+    margin-bottom: 5px;
+    color: #000000;
+    margin-left: 19px;
+}
+
+.Mensaje.user p {
+    padding: 5px 19px;
+    width: fit-content;
+    background-color: #1a73e8;
+    border-radius: 4px;
+    color: #fff;
+    float: right;
+    margin: 0px;
+    line-height: 22px;
+    font-family: "jali-latin-variable";
+    font-weight: 400;
+}
+
+form {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  font-size: 16px;
+}
+
+.boton_enviar {
+    padding: 0 20px;
+    border: none;
+    background-color: #0f0f0f;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+
+.user2 {
+    text-align: left;
+    color: #666666;
+    font-size: 17px;
+    line-height: 22px;
+}
+
+.Mensaje.user2 p {
+    padding: 6px 19px;
+    width: fit-content;
+    /* background-color: #070707; */
+    border-radius: 8px;
+    color: #000000;
+    float: left;
+    margin: 0px;
+    line-height: 22px;
+    font-family: "jali-latin-variable";
+    font-weight: 300;
+}
+
+.icono_chat {
+    width: 48px;
+    cursor: pointer;
+    float: right;
+}
+
+.contenedor_principal_chat {
+    width: auto;
+    display: table;
+    position: absolute;
+    right: 37px;
+    bottom: 24px;
+    z-index: 9;
+}
+
+.icono_cerrar {
+    width: 36px;
+    position: absolute;
+    right: -17px;
+    top: -20px;
+    cursor: pointer;
+    background-color: #fff;
+    border-radius: 100%;
+}
