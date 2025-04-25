@@ -2,6 +2,8 @@
 
 const canvas = document.getElementById('miCanvas');
 const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight - 4;
 
 let objetos = [],
   objetosSeleccionados = [],
@@ -10,6 +12,7 @@ let objetos = [],
   puntoInicioFlecha = null;
 let arrastrando = false;
 const gridSize = 20;
+let textoRedimensionando = null;
 
 // Crear popup flotante
 const popup = document.createElement('div');
@@ -38,16 +41,16 @@ const dibujar = () => {
     .forEach((obj) => obj.dibujar(ctx));
 };
 
-const guardarHistorial = (() => {
-  let historial = [],
-    indice = -1;
-  return () => {
-    historial = historial.slice(0, indice + 1);
-    historial.push(JSON.parse(JSON.stringify(objetos)));
-    if (historial.length > 10) historial.shift();
-    indice = historial.length - 1;
-  };
-})();
+let historial = [],
+  indiceHistorial = -1;
+
+function guardarHistorial() {
+  historial = historial.slice(0, indiceHistorial + 1);
+  const snapshot = JSON.stringify(objetos);
+  historial.push(snapshot);
+  if (historial.length > 20) historial.shift(); // mantener últimos 20 estados
+  indiceHistorial = historial.length - 1;
+}
 
 // Clases
 class Circulo {
@@ -125,16 +128,20 @@ class Texto {
       ctx.fillText(l.trim(), this.x, this.y + i * (this.fontSize + 4));
     });
 
-    if (this.seleccionado) {
-      const alto = lineas.length * (this.fontSize + 4);
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(
-        this.x - 5,
-        this.y - this.fontSize,
-        this.ancho + 10,
-        alto + 10
-      );
+    // if (this.seleccionado) {
+    //   const alto = lineas.length * (this.fontSize + 4);
+    //   ctx.strokeStyle = 'black';
+    //   ctx.lineWidth = 1;
+    //   ctx.strokeRect(
+    //     this.x - 5,
+    //     this.y - this.fontSize,
+    //     this.ancho + 10,
+    //     alto + 10
+    //   );
+    //   ctx.fillStyle = 'red';
+    //   ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
+    // }
+    if (this.seleccionado || this === textoRedimensionando) {
       ctx.fillStyle = 'red';
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
@@ -145,6 +152,14 @@ class Texto {
       x < this.x + this.ancho &&
       y > this.y - this.fontSize &&
       y < this.y + 100 // aproximado para selección
+    );
+  }
+  estaSobreHandler(x, y) {
+    return (
+      x > this.x + this.ancho + 5 &&
+      x < this.x + this.ancho + 13 &&
+      y > this.y - this.fontSize &&
+      y < this.y - this.fontSize + 8
     );
   }
 }
@@ -240,6 +255,17 @@ document.getElementById('circleFlecha').onclick = () =>
 let offsets = new Map();
 canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
   arrastrando = true;
+  textoRedimensionando = null;
+
+  // Ver si hizo clic en el handler de redimensionado
+  for (const obj of objetos) {
+    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+      textoRedimensionando = obj;
+      arrastrando = true;
+      return; // solo redimensiona
+    }
+  }
+
   objetosSeleccionados = objetos.filter((obj) => {
     if (obj.contienePunto(offsetX, offsetY)) {
       obj.seleccionado = true;
@@ -265,7 +291,30 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
 });
 
 canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
+  let hoverResize = false;
+
+  // Mostrar cursor de resize si está sobre handler
+  for (const obj of objetos) {
+    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+      canvas.style.cursor = 'ew-resize';
+      hoverResize = true;
+      break;
+    }
+  }
+
+  if (!hoverResize) {
+    canvas.style.cursor = arrastrando ? 'grabbing' : 'default';
+  }
+
+  if (arrastrando && textoRedimensionando) {
+    const nuevoAncho = Math.max(30, offsetX - textoRedimensionando.x);
+    textoRedimensionando.ancho = nuevoAncho;
+    dibujar();
+    return;
+  }
+
   if (!arrastrando) return;
+
   objetosSeleccionados.forEach((obj) => {
     const o = offsets.get(obj);
     if (o) {
@@ -281,6 +330,7 @@ canvas.addEventListener('mouseup', () => {
   objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
   offsets.clear();
   dibujar();
+  textoRedimensionando = null;
 });
 
 canvas.addEventListener(
@@ -460,7 +510,40 @@ function eliminar() {
   dibujar();
 }
 
-function deshacer() {}
-function rehacer() {}
+function deshacer() {
+  if (indiceHistorial > 0) {
+    indiceHistorial--;
+    const estadoPrevio = JSON.parse(historial[indiceHistorial]);
+    restaurarEstado(estadoPrevio);
+  }
+}
+
+function rehacer() {
+  if (indiceHistorial < historial.length - 1) {
+    indiceHistorial++;
+    const estadoFuturo = JSON.parse(historial[indiceHistorial]);
+    restaurarEstado(estadoFuturo);
+  }
+}
+function restaurarEstado(estado) {
+  objetos = estado
+    .map((obj) => {
+      if (obj.radio) return new Circulo(obj.x, obj.y, obj.radio, obj.color);
+      if (obj.texto)
+        return new Texto(
+          obj.x,
+          obj.y,
+          obj.texto,
+          obj.fontSize,
+          obj.color,
+          obj.ancho
+        );
+      if (obj.origen && obj.destino)
+        return new Flecha(obj.origen, obj.destino, obj.color);
+      return null;
+    })
+    .filter(Boolean);
+  dibujar();
+}
 
 dibujar();
