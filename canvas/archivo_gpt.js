@@ -13,6 +13,11 @@ let objetos = [],
 let arrastrando = false;
 const gridSize = 20;
 let textoRedimensionando = null;
+let zoom = 1;
+let offsetCanvas = { x: 0, y: 0 };
+let desplazandoCanvas = false;
+let ultimaPosMouse = { x: 0, y: 0 };
+let modoPanActivo = false;
 
 // Crear popup flotante
 const popup = document.createElement('div');
@@ -32,7 +37,11 @@ const imgFileInput = popup.querySelector('#imgFile');
 
 // Utilidades
 const dibujar = () => {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y); // aplicar zoom + desplazamiento
+
   objetos
     .filter((obj) => obj instanceof Flecha)
     .forEach((obj) => obj.dibujar(ctx));
@@ -251,14 +260,16 @@ document.getElementById('circleFlecha').onclick = () =>
 // Interacción
 let offsets = new Map();
 canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
-  actualizarCursor(offsetX, offsetY);
+  const { x, y } = transformarCoordenadas(offsetX, offsetY);
+
+  actualizarCursor(x, y);
   arrastrando = true;
   textoRedimensionando = null;
   objetosSeleccionados = [];
 
   // Check si hizo clic sobre un handler de texto
   for (const obj of objetos) {
-    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+    if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
       textoRedimensionando = obj;
       return;
     }
@@ -266,7 +277,7 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
 
   // Buscar qué objetos se están tocando
   for (const obj of objetos) {
-    if (obj.contienePunto(offsetX, offsetY)) {
+    if (obj.contienePunto(x, y)) {
       if (shiftKey) {
         // Añadir a la selección
         if (!objetosSeleccionados.includes(obj)) {
@@ -279,7 +290,7 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
         objetosSeleccionados = [obj];
         obj.seleccionado = true;
       }
-      offsets.set(obj, { dx: offsetX - obj.x, dy: offsetY - obj.y });
+      offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
     }
   }
 
@@ -299,13 +310,14 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
 });
 
 canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
-  actualizarCursor(offsetX, offsetY);
+  const { x, y } = transformarCoordenadas(offsetX, offsetY);
+  actualizarCursor(x, y);
 
   let hoverResize = false;
 
   // Mostrar cursor de resize si está sobre handler
   for (const obj of objetos) {
-    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+    if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
       canvas.style.cursor = 'ew-resize';
       hoverResize = true;
       break;
@@ -317,7 +329,7 @@ canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
   }
 
   if (arrastrando && textoRedimensionando) {
-    const nuevoAncho = Math.max(30, offsetX - textoRedimensionando.x);
+    const nuevoAncho = Math.max(30, x - textoRedimensionando.x);
     textoRedimensionando.ancho = nuevoAncho;
     dibujar();
     return;
@@ -328,31 +340,33 @@ canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
   objetosSeleccionados.forEach((obj) => {
     const o = offsets.get(obj);
     if (o) {
-      obj.x = Math.round((offsetX - o.dx) / gridSize) * gridSize;
-      obj.y = Math.round((offsetY - o.dy) / gridSize) * gridSize;
+      obj.x = Math.round((x - o.dx) / gridSize) * gridSize;
+      obj.y = Math.round((y - o.dy) / gridSize) * gridSize;
     }
   });
   dibujar();
 });
 
 canvas.addEventListener('mouseup', ({ offsetX, offsetY }) => {
+  const { x, y } = transformarCoordenadas(offsetX, offsetY);
   arrastrando = false;
   objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
   offsets.clear();
   dibujar();
   textoRedimensionando = null;
-  actualizarCursor(offsetX, offsetY);
+  actualizarCursor(x, y);
 });
 
 canvas.addEventListener(
   'dblclick',
   ({ clientX, clientY, offsetX, offsetY }) => {
+    const { x, y } = transformarCoordenadas(offsetX, offsetY);
     for (const obj of objetos) {
-      if (obj instanceof Circulo && obj.contienePunto(offsetX, offsetY)) {
+      if (obj instanceof Circulo && obj.contienePunto(x, y)) {
         mostrarPopup(obj, clientX, clientY);
         return;
       }
-      if (obj instanceof Texto && obj.contienePunto(offsetX, offsetY)) {
+      if (obj instanceof Texto && obj.contienePunto(x, y)) {
         objetoEditando = obj;
         obj.seleccionado = true;
         document.addEventListener('keydown', manejarEntrada);
@@ -361,6 +375,56 @@ canvas.addEventListener(
       }
     }
   }
+);
+
+canvas.addEventListener('mousedown', (e) => {
+  if (modoPanActivo) {
+    desplazandoCanvas = true;
+    ultimaPosMouse = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (desplazandoCanvas) {
+    const dx = e.clientX - ultimaPosMouse.x;
+    const dy = e.clientY - ultimaPosMouse.y;
+    offsetCanvas.x += dx;
+    offsetCanvas.y += dy;
+    ultimaPosMouse = { x: e.clientX, y: e.clientY };
+    dibujar();
+    return;
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (desplazandoCanvas) {
+    desplazandoCanvas = false;
+    canvas.style.cursor = modoPanActivo ? 'grab' : 'default';
+  }
+});
+
+canvas.addEventListener(
+  'wheel',
+  (e) => {
+    if (!e.ctrlKey) return;
+
+    e.preventDefault();
+
+    const zoomFactor = 1.1;
+    const { offsetX, offsetY } = e;
+    const { x: mx, y: my } = transformarCoordenadas(offsetX, offsetY);
+
+    const nuevoZoom = e.deltaY < 0 ? zoom * zoomFactor : zoom / zoomFactor;
+
+    // mantener punto del mouse centrado al hacer zoom
+    offsetCanvas.x -= mx * nuevoZoom - mx * zoom;
+    offsetCanvas.y -= my * nuevoZoom - my * zoom;
+    zoom = nuevoZoom;
+
+    dibujar();
+  },
+  { passive: false }
 );
 
 function mostrarPopup(circulo, x, y) {
@@ -404,6 +468,17 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     ocultarPopup();
     finalizarEdicion();
+  }
+  if (e.code === 'Space' && !modoPanActivo) {
+    modoPanActivo = true;
+    canvas.style.cursor = 'grab';
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') {
+    modoPanActivo = false;
+    desplazandoCanvas = false;
+    canvas.style.cursor = 'default';
   }
 });
 
@@ -560,13 +635,14 @@ function restaurarEstado(estado) {
 }
 
 function actualizarCursor(offsetX, offsetY) {
+  const { x, y } = transformarCoordenadas(offsetX, offsetY);
   if (textoRedimensionando) {
     canvas.style.cursor = 'ew-resize';
     return;
   }
 
   for (const obj of objetos) {
-    if (obj instanceof Texto && obj.estaSobreHandler(offsetX, offsetY)) {
+    if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
       canvas.style.cursor = 'ew-resize';
       return;
     }
@@ -577,12 +653,18 @@ function actualizarCursor(offsetX, offsetY) {
     return;
   }
 
-  const hovering = objetos.some((obj) => obj.contienePunto(offsetX, offsetY));
+  const hovering = objetos.some((obj) => obj.contienePunto(x, y));
   if (hovering) {
     canvas.style.cursor = arrastrando ? 'grabbing' : 'move';
   } else {
     canvas.style.cursor = 'default';
   }
+}
+function transformarCoordenadas(x, y) {
+  return {
+    x: (x - offsetCanvas.x) / zoom,
+    y: (y - offsetCanvas.y) / zoom,
+  };
 }
 
 dibujar();
