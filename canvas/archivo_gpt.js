@@ -20,14 +20,24 @@ let ultimaPosMouse = { x: 0, y: 0 };
 let modoPanActivo = false;
 
 const editorTexto = document.createElement('textarea');
-editorTexto.style.position = 'absolute';
-editorTexto.style.display = 'none';
-editorTexto.style.fontFamily = 'Arial, sans-serif';
-editorTexto.style.fontSize = '16px';
-editorTexto.style.border = '1px solid #ccc';
-editorTexto.style.padding = '4px';
-editorTexto.style.zIndex = '1000';
-editorTexto.style.resize = 'none';
+Object.assign(editorTexto.style, {
+  position: 'absolute',
+  display: 'none',
+  fontFamily: 'Inter, sans-serif',
+  fontSize: '16px',
+  border: '1px solid #d1d5db', // gris claro
+  padding: '6px 8px',
+  zIndex: '1000',
+  resize: 'none',
+  outline: 'none',
+  backgroundColor: 'white',
+  borderRadius: '6px',
+  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+  minHeight: '40px',
+  lineHeight: '1.5',
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'break-word',
+});
 document.body.appendChild(editorTexto);
 
 // Crear popup flotante
