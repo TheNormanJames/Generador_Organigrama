@@ -38,6 +38,9 @@ Object.assign(editorTexto.style, {
   whiteSpace: 'pre-wrap',
   overflowWrap: 'break-word',
 });
+editorTexto.addEventListener('input', () => {
+  autosizeTextarea(editorTexto);
+});
 document.body.appendChild(editorTexto);
 
 // Crear popup flotante
@@ -456,6 +459,7 @@ function mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
   editorTexto.style.fontSize = textoObj.fontSize + 'px';
   editorTexto.style.display = 'block';
   editorTexto.focus();
+  autosizeTextarea(editorTexto);
 
   editorTexto.onblur = () => {
     textoObj.texto = editorTexto.value;
@@ -712,6 +716,10 @@ function transformarCoordenadas(x, y) {
     x: (x - offsetCanvas.x) / zoom,
     y: (y - offsetCanvas.y) / zoom,
   };
+}
+function autosizeTextarea(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
 }
 
 dibujar();
