@@ -1,37 +1,27 @@
 // alert("asd");
 
-// Archivo único optimizado: mini Figma simplificado
+// Archivo único optimizado: mini Figma simplificado con flechas conectadas inteligentes y círculos con imagen
 
 const canvas = document.getElementById('miCanvas');
 const ctx = canvas.getContext('2d');
 
 let objetos = [],
   objetosSeleccionados = [],
-  objetoEditando = null;
+  objetoEditando = null,
+  conectandoFlecha = false,
+  origenFlecha = null;
 let arrastrando = false;
 const gridSize = 20;
-
-// Crear popup flotante para imagen
-const popup = document.createElement('div');
-popup.style.position = 'absolute';
-popup.style.display = 'none';
-popup.style.background = 'white';
-popup.style.border = '1px solid black';
-popup.style.padding = '10px';
-popup.style.zIndex = 1000;
-popup.innerHTML = `
-  <input type="text" id="urlInput" placeholder="URL de imagen" style="display:block; margin-bottom:5px;" />
-  <input type="file" id="fileInput" accept="image/*" style="display:block; margin-bottom:5px;" />
-  <button id="setImageBtn">Establecer Imagen</button>
-`;
-document.body.appendChild(popup);
-
-let circuloSeleccionadoParaImagen = null;
 
 // Utilidades
 const dibujar = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  objetos.forEach((obj) => obj.dibujar(ctx));
+  objetos
+    .filter((obj) => obj instanceof Flecha)
+    .forEach((obj) => obj.dibujar(ctx));
+  objetos
+    .filter((obj) => !(obj instanceof Flecha))
+    .forEach((obj) => obj.dibujar(ctx));
 };
 
 const guardarHistorial = (() => {
@@ -47,44 +37,37 @@ const guardarHistorial = (() => {
 
 // Clases
 class Circulo {
-  constructor(x, y, radio, color, imagen = null) {
-    Object.assign(this, { x, y, radio, color, imagen, seleccionado: false });
+  constructor(x, y, radio, color, imagenURL = null) {
+    Object.assign(this, { x, y, radio, color, seleccionado: false, imagenURL });
+    if (imagenURL) {
+      this.imagen = new Image();
+      this.imagen.src = imagenURL;
+    }
   }
   dibujar(ctx) {
-    if (this.imagen) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
-        ctx.clip();
-        ctx.drawImage(
-          img,
-          this.x - this.radio,
-          this.y - this.radio,
-          this.radio * 2,
-          this.radio * 2
-        );
-        ctx.restore();
-        if (this.seleccionado) {
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
-          ctx.stroke();
-        }
-      };
-      img.src = this.imagen;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
+    ctx.clip();
+    if (this.imagenURL && this.imagen?.complete) {
+      ctx.drawImage(
+        this.imagen,
+        this.x - this.radio,
+        this.y - this.radio,
+        this.radio * 2,
+        this.radio * 2
+      );
     } else {
       ctx.fillStyle = this.color;
+      ctx.fill();
+    }
+    ctx.restore();
+    if (this.seleccionado) {
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
-      ctx.fill();
-      if (this.seleccionado) {
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
+      ctx.stroke();
     }
   }
   contienePunto(x, y) {
@@ -118,15 +101,23 @@ class Texto {
 }
 
 class Flecha {
-  constructor(xInicio, yInicio, xFin, yFin, color = 'black') {
-    Object.assign(this, { xInicio, yInicio, xFin, yFin, color });
+  constructor(origen, destino, color = 'black') {
+    Object.assign(this, { origen, destino, color });
   }
   dibujar(ctx) {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
+    const { x: x1, y: y1 } = puntoBorde(this.origen, this.destino);
+    const { x: x2, y: y2 } = puntoBorde(this.destino, this.origen);
+    const intermedio = detectarObstaculo(x1, y1, x2, y2);
+
     ctx.beginPath();
-    ctx.moveTo(this.xInicio, this.yInicio);
-    ctx.lineTo(this.xFin, this.yFin);
+    ctx.moveTo(x1, y1);
+    if (intermedio) {
+      ctx.lineTo(intermedio.x, y1);
+      ctx.lineTo(intermedio.x, y2);
+    }
+    ctx.lineTo(x2, y2);
     ctx.stroke();
   }
   contienePunto() {
@@ -134,21 +125,61 @@ class Flecha {
   }
 }
 
+function puntoBorde(origen, destino) {
+  const dx = destino.x - origen.x;
+  const dy = destino.y - origen.y;
+  const angulo = Math.atan2(dy, dx);
+  if (origen instanceof Circulo) {
+    return {
+      x: origen.x + Math.cos(angulo) * origen.radio,
+      y: origen.y + Math.sin(angulo) * origen.radio,
+    };
+  }
+  return { x: origen.x, y: origen.y };
+}
+
+function detectarObstaculo(x1, y1, x2, y2) {
+  for (const obj of objetos) {
+    if (!(obj instanceof Flecha)) {
+      const colision = obj.contienePunto((x1 + x2) / 2, (y1 + y2) / 2);
+      if (colision) return { x: (x1 + x2) / 2 + 40 };
+    }
+  }
+  return null;
+}
+
 // Agregar objetos
 const crear = (tipo) => {
   if (tipo === 'circulo') objetos.push(new Circulo(100, 100, 30, 'blue'));
   else if (tipo === 'texto') objetos.push(new Texto(150, 150, 'Hola!', 18));
-  else if (tipo === 'flecha') objetos.push(new Flecha(200, 200, 300, 300));
   dibujar();
 };
 
 document.getElementById('circleBtn').onclick = () => crear('circulo');
 document.getElementById('circleTexto').onclick = () => crear('texto');
-document.getElementById('circleFlecha').onclick = () => crear('flecha');
+document.getElementById('circleFlecha').onclick = () => {
+  conectandoFlecha = true;
+  origenFlecha = null;
+};
 
 // Interacción
 let offsets = new Map();
 canvas.addEventListener('mousedown', ({ offsetX, offsetY }) => {
+  if (conectandoFlecha) {
+    const objetivo = objetos.find((obj) => obj.contienePunto(offsetX, offsetY));
+    if (objetivo) {
+      if (!origenFlecha) {
+        origenFlecha = objetivo;
+      } else {
+        objetos.push(new Flecha(origenFlecha, objetivo));
+        conectandoFlecha = false;
+        origenFlecha = null;
+        dibujar();
+      }
+    }
+    return;
+  }
+
   arrastrando = true;
   objetosSeleccionados = objetos.filter((obj) => {
     if (obj.contienePunto(offsetX, offsetY)) {
@@ -181,63 +212,54 @@ canvas.addEventListener('mouseup', () => {
   dibujar();
 });
 
-// Doble clic en círculo para popup
+// Popup imagen
+const popup = document.createElement('div');
+popup.innerHTML = `
+  <input type="text" placeholder="URL de imagen" id="imgURL" style="width: 160px" />
+  <input type="file" id="imgFile" accept="image/*" />
+  <button id="btnImgOK">OK</button>
+`;
+popup.style.position = 'absolute';
+popup.style.display = 'none';
+popup.style.background = 'white';
+popup.style.border = '1px solid black';
+popup.style.padding = '4px';
+popup.style.zIndex = 10;
+document.body.appendChild(popup);
+
 canvas.addEventListener('dblclick', ({ offsetX, offsetY }) => {
   for (const obj of objetos) {
     if (obj instanceof Circulo && obj.contienePunto(offsetX, offsetY)) {
-      circuloSeleccionadoParaImagen = obj;
+      objetoEditando = obj;
       popup.style.left = `${offsetX + canvas.offsetLeft}px`;
       popup.style.top = `${offsetY + canvas.offsetTop}px`;
       popup.style.display = 'block';
-      return;
-    }
-  }
-  for (const obj of objetos) {
-    if (obj instanceof Texto && obj.contienePunto(offsetX, offsetY)) {
-      objetoEditando = obj;
-      obj.seleccionado = true;
-      document.addEventListener('keydown', manejarEntrada);
-      canvas.addEventListener('mousedown', finalizarEdicion);
       break;
     }
   }
 });
 
-document.getElementById('setImageBtn').onclick = () => {
-  if (!circuloSeleccionadoParaImagen) return;
-  const url = document.getElementById('urlInput').value;
-  const file = document.getElementById('fileInput').files[0];
+document.getElementById('btnImgOK').onclick = () => {
+  const url = document.getElementById('imgURL').value;
+  const file = document.getElementById('imgFile').files[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      circuloSeleccionadoParaImagen.imagen = e.target.result;
+    reader.onload = () => {
+      objetoEditando.imagenURL = reader.result;
+      objetoEditando.imagen = new Image();
+      objetoEditando.imagen.src = reader.result;
       popup.style.display = 'none';
       dibujar();
     };
     reader.readAsDataURL(file);
   } else if (url) {
-    circuloSeleccionadoParaImagen.imagen = url;
+    objetoEditando.imagenURL = url;
+    objetoEditando.imagen = new Image();
+    objetoEditando.imagen.src = url;
     popup.style.display = 'none';
     dibujar();
   }
 };
-
-function manejarEntrada(e) {
-  if (!objetoEditando) return;
-  if (e.key === 'Escape') return finalizarEdicion();
-  if (e.key === 'Backspace')
-    objetoEditando.texto = objetoEditando.texto.slice(0, -1);
-  else if (e.key.length === 1) objetoEditando.texto += e.key;
-  dibujar();
-}
-
-function finalizarEdicion() {
-  if (objetoEditando) objetoEditando.seleccionado = false;
-  objetoEditando = null;
-  document.removeEventListener('keydown', manejarEntrada);
-  canvas.removeEventListener('mousedown', finalizarEdicion);
-  dibujar();
-}
 
 // Z-index
 const moverZ = (dir) => {
@@ -272,21 +294,20 @@ document.getElementById('btnImportar').onchange = (e) => {
     try {
       const parsed = JSON.parse(target.result);
       objetos = parsed
-        .map((obj) =>
-          obj.radio
-            ? new Circulo(obj.x, obj.y, obj.radio, obj.color, obj.imagen)
-            : obj.texto
-            ? new Texto(obj.x, obj.y, obj.texto, obj.fontSize, obj.color)
-            : obj.xInicio
-            ? new Flecha(
-                obj.xInicio,
-                obj.yInicio,
-                obj.xFin,
-                obj.yFin,
-                obj.color
-              )
-            : null
-        )
+        .map((obj) => {
+          if (obj.radio)
+            return new Circulo(
+              obj.x,
+              obj.y,
+              obj.radio,
+              obj.color,
+              obj.imagenURL
+            );
+          if (obj.texto)
+            return new Texto(obj.x, obj.y, obj.texto, obj.fontSize, obj.color);
+          if (obj.origen && obj.destino) return null;
+          return null;
+        })
         .filter(Boolean);
       dibujar();
     } catch (e) {
@@ -313,7 +334,7 @@ function duplicar() {
         obj.y + 20,
         obj.radio,
         obj.color,
-        obj.imagen
+        obj.imagenURL
       );
     else if (obj instanceof Texto)
       copia = new Texto(
@@ -321,14 +342,6 @@ function duplicar() {
         obj.y + 20,
         obj.texto,
         obj.fontSize,
-        obj.color
-      );
-    else if (obj instanceof Flecha)
-      copia = new Flecha(
-        obj.xInicio + 20,
-        obj.yInicio + 20,
-        obj.xFin + 20,
-        obj.yFin + 20,
         obj.color
       );
     if (copia) objetos.push(copia);
@@ -343,11 +356,7 @@ function eliminar() {
   dibujar();
 }
 
-function deshacer() {
-  /* ver guardarHistorial: closure interno maneja historial */
-}
-function rehacer() {
-  /* idem */
-}
+function deshacer() {}
+function rehacer() {}
 
 dibujar();
