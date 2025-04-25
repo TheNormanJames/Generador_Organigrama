@@ -19,6 +19,17 @@ let desplazandoCanvas = false;
 let ultimaPosMouse = { x: 0, y: 0 };
 let modoPanActivo = false;
 
+const editorTexto = document.createElement('textarea');
+editorTexto.style.position = 'absolute';
+editorTexto.style.display = 'none';
+editorTexto.style.fontFamily = 'Arial, sans-serif';
+editorTexto.style.fontSize = '16px';
+editorTexto.style.border = '1px solid #ccc';
+editorTexto.style.padding = '4px';
+editorTexto.style.zIndex = '1000';
+editorTexto.style.resize = 'none';
+document.body.appendChild(editorTexto);
+
 // Crear popup flotante
 const popup = document.createElement('div');
 popup.style.position = 'absolute';
@@ -368,9 +379,7 @@ canvas.addEventListener(
       }
       if (obj instanceof Texto && obj.contienePunto(x, y)) {
         objetoEditando = obj;
-        obj.seleccionado = true;
-        document.addEventListener('keydown', manejarEntrada);
-        canvas.addEventListener('mousedown', finalizarEdicion);
+        mostrarEditorTexto(obj, offsetX, offsetY);
         return;
       }
     }
@@ -427,6 +436,25 @@ canvas.addEventListener(
   { passive: false }
 );
 
+function mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
+  editorTexto.value = textoObj.texto;
+  editorTexto.style.left = pantallaX + 'px';
+  editorTexto.style.top = pantallaY + 'px';
+  editorTexto.style.width = textoObj.ancho + 'px';
+  editorTexto.style.height = 'auto';
+  editorTexto.style.lineHeight = textoObj.fontSize + 4 + 'px';
+  editorTexto.style.fontSize = textoObj.fontSize + 'px';
+  editorTexto.style.display = 'block';
+  editorTexto.focus();
+
+  editorTexto.onblur = () => {
+    textoObj.texto = editorTexto.value;
+    editorTexto.style.display = 'none';
+    objetoEditando = null;
+    dibujar();
+  };
+}
+
 function mostrarPopup(circulo, x, y) {
   popup.style.left = x + 'px';
   popup.style.top = y + 'px';
@@ -465,14 +493,30 @@ function mostrarPopup(circulo, x, y) {
 }
 
 document.addEventListener('keydown', (e) => {
+  // if (e.key === 'Escape') {
+  //   ocultarPopup();
+  //   finalizarEdicion();
+  // }
   if (e.key === 'Escape') {
-    ocultarPopup();
-    finalizarEdicion();
+    editorTexto.style.display = 'none';
+    objetoEditando = null;
+  }
+  if (e.key === 'Enter' && e.ctrlKey) {
+    if (objetoEditando) {
+      objetoEditando.texto = editorTexto.value;
+      editorTexto.style.display = 'none';
+      objetoEditando = null;
+      dibujar();
+    }
   }
   if (e.code === 'Space' && !modoPanActivo) {
     modoPanActivo = true;
     canvas.style.cursor = 'grab';
   }
+  if (e.ctrlKey && e.key === 'z') return deshacer();
+  if (e.ctrlKey && e.key === 'y') return rehacer();
+  if (e.ctrlKey && e.key === 'd') return duplicar();
+  if (e.key === 'Delete') return eliminar();
 });
 document.addEventListener('keyup', (e) => {
   if (e.code === 'Space') {
@@ -563,13 +607,6 @@ document.getElementById('btnImportar').onchange = (e) => {
   };
   lector.readAsText(archivo);
 };
-
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'z') return deshacer();
-  if (e.ctrlKey && e.key === 'y') return rehacer();
-  if (e.ctrlKey && e.key === 'd') return duplicar();
-  if (e.key === 'Delete') return eliminar();
-});
 
 function duplicar() {
   guardarHistorial();
