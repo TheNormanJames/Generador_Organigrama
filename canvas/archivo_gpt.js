@@ -1,7 +1,7 @@
 // Archivo único optimizado: mini Figma simplificado
 
-const canvas = document.getElementById('miCanvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("miCanvas");
+const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight - 65;
 
@@ -19,59 +19,59 @@ let desplazandoCanvas = false;
 let ultimaPosMouse = { x: 0, y: 0 };
 let modoPanActivo = false;
 
-const editorTexto = document.createElement('textarea');
+const editorTexto = document.createElement("textarea");
 Object.assign(editorTexto.style, {
-  position: 'absolute',
-  display: 'none',
-  fontFamily: 'Inter, sans-serif',
-  fontSize: '16px',
-  border: '1px solid #d1d5db', // gris claro
-  padding: '6px 8px',
-  zIndex: '1000',
-  resize: 'none',
-  outline: 'none',
-  backgroundColor: 'white',
-  borderRadius: '6px',
-  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-  minHeight: '40px',
-  lineHeight: '1.5',
-  whiteSpace: 'pre-wrap',
-  overflowWrap: 'break-word',
+  position: "absolute",
+  display: "none",
+  fontFamily: "Inter, sans-serif",
+  fontSize: "16px",
+  border: "1px solid #d1d5db", // gris claro
+  padding: "6px 8px",
+  zIndex: "1000",
+  resize: "none",
+  outline: "none",
+  backgroundColor: "white",
+  borderRadius: "6px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+  minHeight: "40px",
+  lineHeight: "1.5",
+  whiteSpace: "pre-wrap",
+  overflowWrap: "break-word",
 });
-editorTexto.addEventListener('input', () => {
+editorTexto.addEventListener("input", () => {
   autosizeTextarea(editorTexto);
 });
 document.body.appendChild(editorTexto);
 
-const barraAlineacion = document.createElement('div');
+const barraAlineacion = document.createElement("div");
 Object.assign(barraAlineacion.style, {
-  position: 'absolute',
-  display: 'none',
-  background: '#fff',
-  border: '1px solid #ccc',
-  borderRadius: '6px',
-  padding: '4px',
-  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-  zIndex: '1001',
-  fontFamily: 'sans-serif',
+  position: "absolute",
+  display: "none",
+  background: "#fff",
+  border: "1px solid #ccc",
+  borderRadius: "6px",
+  padding: "4px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+  zIndex: "1001",
+  fontFamily: "sans-serif",
 });
 
-['left', 'center', 'right', 'justify'].forEach((alineacion) => {
-  const btn = document.createElement('button');
+["left", "center", "right", "justify"].forEach((alineacion) => {
+  const btn = document.createElement("button");
   btn.textContent = alineacion[0].toUpperCase(); // L, C, R, J
   btn.title = alineacion;
   Object.assign(btn.style, {
-    margin: '2px',
-    padding: '4px 6px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    border: '1px solid #ccc',
-    background: '#f9f9f9',
-    borderRadius: '4px',
+    margin: "2px",
+    padding: "4px 6px",
+    fontSize: "14px",
+    cursor: "pointer",
+    border: "1px solid #ccc",
+    background: "#f9f9f9",
+    borderRadius: "4px",
   });
   // console.log(objetoEditando);
   btn.onclick = () => {
-    console.log('asdf');
+    console.log("asdf");
 
     if (objetoEditando) {
       objetoEditando.alineacion = alineacion;
@@ -85,20 +85,20 @@ Object.assign(barraAlineacion.style, {
 document.body.appendChild(barraAlineacion);
 
 // Crear popup flotante
-const popup = document.createElement('div');
-popup.style.position = 'absolute';
-popup.style.padding = '10px';
-popup.style.background = 'white';
-popup.style.border = '1px solid black';
-popup.style.display = 'none';
+const popup = document.createElement("div");
+popup.style.position = "absolute";
+popup.style.padding = "10px";
+popup.style.background = "white";
+popup.style.border = "1px solid black";
+popup.style.display = "none";
 popup.innerHTML = `
   <input type="text" placeholder="URL de imagen" id="imgUrl" style="display:block; margin-bottom:5px; width: 200px;"/>
   <input type="file" id="imgFile" accept="image/*"/>
 `;
 document.body.appendChild(popup);
 
-const imgUrlInput = popup.querySelector('#imgUrl');
-const imgFileInput = popup.querySelector('#imgFile');
+const imgUrlInput = popup.querySelector("#imgUrl");
+const imgFileInput = popup.querySelector("#imgFile");
 
 // Utilidades
 const dibujar = () => {
@@ -117,6 +117,7 @@ const dibujar = () => {
 
 let historial = [],
   indiceHistorial = -1;
+let circuloRedimensionando = null;
 
 function guardarHistorial() {
   historial = historial.slice(0, indiceHistorial + 1);
@@ -159,18 +160,29 @@ class Circulo {
       ctx.fill();
     }
     if (this.seleccionado) {
-      ctx.strokeStyle = 'black';
+      ctx.strokeStyle = "black";
       ctx.lineWidth = 3;
       ctx.stroke();
+    }
+    if (this.seleccionado || this === circuloRedimensionando) {
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(this.x + this.radio + 5, this.y, 5, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
   contienePunto(x, y) {
     return Math.hypot(x - this.x, y - this.y) < this.radio;
   }
+  estaSobreHandler(x, y) {
+    const handleX = this.x + this.radio + 5;
+    const handleY = this.y;
+    return Math.abs(x - handleX) <= 5 && Math.abs(y - handleY) <= 5;
+  }
 }
 
 class Texto {
-  constructor(x, y, texto, fontSize = 16, color = 'black', ancho = 200) {
+  constructor(x, y, texto, fontSize = 16, color = "black", ancho = 200) {
     Object.assign(this, {
       x,
       y,
@@ -180,19 +192,19 @@ class Texto {
       seleccionado: false,
       ancho,
     });
-    this.alineacion = 'left'; // por defecto
+    this.alineacion = "left"; // por defecto
   }
   dibujar(ctx) {
     ctx.fillStyle = this.color;
     ctx.font = `${this.fontSize}px Arial`;
     const lineas = [];
-    let palabras = this.texto.split(' ');
-    let linea = '';
+    let palabras = this.texto.split(" ");
+    let linea = "";
     for (let palabra of palabras) {
-      const prueba = linea + palabra + ' ';
+      const prueba = linea + palabra + " ";
       if (ctx.measureText(prueba).width > this.ancho) {
         lineas.push(linea);
-        linea = palabra + ' ';
+        linea = palabra + " ";
       } else {
         linea = prueba;
       }
@@ -202,15 +214,15 @@ class Texto {
     lineas.forEach((l, i) => {
       ctx.textAlign = this.alineacion;
       let textoX = this.x;
-      if (this.alineacion === 'center') textoX = this.x + this.ancho / 2;
-      if (this.alineacion === 'right') textoX = this.x + this.ancho;
+      if (this.alineacion === "center") textoX = this.x + this.ancho / 2;
+      if (this.alineacion === "right") textoX = this.x + this.ancho;
 
       ctx.fillText(l.trim(), textoX, this.y + i * (this.fontSize + 4));
     });
 
     if (this.seleccionado || this === textoRedimensionando) {
       const alto = lineas.length * (this.fontSize + 4);
-      ctx.strokeStyle = '#000000cc';
+      ctx.strokeStyle = "#000000cc";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         this.x - 5,
@@ -219,7 +231,7 @@ class Texto {
         alto + 10
       );
 
-      ctx.fillStyle = 'red';
+      ctx.fillStyle = "red";
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
   }
@@ -242,7 +254,7 @@ class Texto {
 }
 
 class Flecha {
-  constructor(origen, destino, color = 'black') {
+  constructor(origen, destino, color = "black") {
     this.origen = origen;
     this.destino = destino;
     this.color = color;
@@ -317,25 +329,35 @@ function intersecta(linea, obj) {
 
 // Agregar objetos
 const crear = (tipo) => {
-  if (tipo === 'circulo') objetos.push(new Circulo(100, 100, 30, 'blue'));
-  else if (tipo === 'texto') objetos.push(new Texto(150, 150, 'Hola!', 18));
-  else if (tipo === 'flechaConectada') conectandoFlecha = true;
+  if (tipo === "circulo") objetos.push(new Circulo(100, 100, 30, "blue"));
+  else if (tipo === "texto") objetos.push(new Texto(150, 150, "Hola!", 18));
+  else if (tipo === "flechaConectada") conectandoFlecha = true;
   dibujar();
 };
 
-document.getElementById('circleBtn').onclick = () => crear('circulo');
-document.getElementById('circleTexto').onclick = () => crear('texto');
-document.getElementById('circleFlecha').onclick = () =>
-  crear('flechaConectada');
+document.getElementById("circleBtn").onclick = () => crear("circulo");
+document.getElementById("circleTexto").onclick = () => crear("texto");
+document.getElementById("circleFlecha").onclick = () =>
+  crear("flechaConectada");
 
 // Interacción
 let offsets = new Map();
-canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
+canvas.addEventListener("mousedown", ({ offsetX, offsetY, shiftKey }) => {
   const { x, y } = transformarCoordenadas(offsetX, offsetY);
 
   actualizarCursor(x, y);
   arrastrando = true;
   textoRedimensionando = null;
+  circuloRedimensionando = null;
+
+  // Check si hizo clic sobre un handler de círculo
+  for (const obj of objetos) {
+    if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
+      circuloRedimensionando = obj;
+      return;
+    }
+  }
+
   objetosSeleccionados = [];
 
   // Check si hizo clic sobre un handler de texto
@@ -380,7 +402,7 @@ canvas.addEventListener('mousedown', ({ offsetX, offsetY, shiftKey }) => {
   dibujar();
 });
 
-canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
+canvas.addEventListener("mousemove", ({ offsetX, offsetY }) => {
   const { x, y } = transformarCoordenadas(offsetX, offsetY);
   actualizarCursor(x, y);
 
@@ -389,14 +411,23 @@ canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
   // Mostrar cursor de resize si está sobre handler
   for (const obj of objetos) {
     if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
-      canvas.style.cursor = 'ew-resize';
+      canvas.style.cursor = "ew-resize";
       hoverResize = true;
       break;
     }
   }
 
   if (!hoverResize) {
-    canvas.style.cursor = arrastrando ? 'grabbing' : 'default';
+    canvas.style.cursor = arrastrando ? "grabbing" : "default";
+  }
+  if (arrastrando && circuloRedimensionando) {
+    const nuevoRadio = Math.max(
+      10,
+      Math.hypot(x - circuloRedimensionando.x, y - circuloRedimensionando.y) - 5
+    );
+    circuloRedimensionando.radio = nuevoRadio;
+    dibujar();
+    return;
   }
 
   if (arrastrando && textoRedimensionando) {
@@ -418,8 +449,10 @@ canvas.addEventListener('mousemove', ({ offsetX, offsetY }) => {
   dibujar();
 });
 
-canvas.addEventListener('mouseup', ({ offsetX, offsetY }) => {
+canvas.addEventListener("mouseup", ({ offsetX, offsetY }) => {
   const { x, y } = transformarCoordenadas(offsetX, offsetY);
+  circuloRedimensionando = null;
+
   arrastrando = false;
   objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
   offsets.clear();
@@ -429,7 +462,7 @@ canvas.addEventListener('mouseup', ({ offsetX, offsetY }) => {
 });
 
 canvas.addEventListener(
-  'dblclick',
+  "dblclick",
   ({ clientX, clientY, offsetX, offsetY }) => {
     const { x, y } = transformarCoordenadas(offsetX, offsetY);
     for (const obj of objetos) {
@@ -446,15 +479,15 @@ canvas.addEventListener(
   }
 );
 
-canvas.addEventListener('mousedown', (e) => {
+canvas.addEventListener("mousedown", (e) => {
   if (modoPanActivo) {
     desplazandoCanvas = true;
     ultimaPosMouse = { x: e.clientX, y: e.clientY };
-    canvas.style.cursor = 'grabbing';
+    canvas.style.cursor = "grabbing";
   }
 });
 
-canvas.addEventListener('mousemove', (e) => {
+canvas.addEventListener("mousemove", (e) => {
   if (desplazandoCanvas) {
     const dx = e.clientX - ultimaPosMouse.x;
     const dy = e.clientY - ultimaPosMouse.y;
@@ -466,15 +499,15 @@ canvas.addEventListener('mousemove', (e) => {
   }
 });
 
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener("mouseup", () => {
   if (desplazandoCanvas) {
     desplazandoCanvas = false;
-    canvas.style.cursor = modoPanActivo ? 'grab' : 'default';
+    canvas.style.cursor = modoPanActivo ? "grab" : "default";
   }
 });
 
 canvas.addEventListener(
-  'wheel',
+  "wheel",
   (e) => {
     if (!e.ctrlKey) return;
 
@@ -498,26 +531,26 @@ canvas.addEventListener(
 
 function mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
   editorTexto.value = textoObj.texto;
-  editorTexto.style.left = pantallaX + 'px';
-  editorTexto.style.top = pantallaY + 'px';
-  editorTexto.style.width = textoObj.ancho + 'px';
-  editorTexto.style.height = 'auto';
-  editorTexto.style.lineHeight = textoObj.fontSize + 4 + 'px';
-  editorTexto.style.fontSize = textoObj.fontSize + 'px';
-  editorTexto.style.display = 'block';
-  editorTexto.style.textAlign = textoObj.alineacion || 'left';
+  editorTexto.style.left = pantallaX + "px";
+  editorTexto.style.top = pantallaY + "px";
+  editorTexto.style.width = textoObj.ancho + "px";
+  editorTexto.style.height = "auto";
+  editorTexto.style.lineHeight = textoObj.fontSize + 4 + "px";
+  editorTexto.style.fontSize = textoObj.fontSize + "px";
+  editorTexto.style.display = "block";
+  editorTexto.style.textAlign = textoObj.alineacion || "left";
 
-  barraAlineacion.style.left = pantallaX + 'px';
-  barraAlineacion.style.top = pantallaY - 40 + 'px';
-  barraAlineacion.style.display = 'flex';
+  barraAlineacion.style.left = pantallaX + "px";
+  barraAlineacion.style.top = pantallaY - 40 + "px";
+  barraAlineacion.style.display = "flex";
 
   editorTexto.focus();
   autosizeTextarea(editorTexto);
 
   editorTexto.onblur = () => {
     textoObj.texto = editorTexto.value;
-    editorTexto.style.display = 'none';
-    barraAlineacion.style.display = 'none';
+    editorTexto.style.display = "none";
+    barraAlineacion.style.display = "none";
 
     objetoEditando = null;
     dibujar();
@@ -525,11 +558,11 @@ function mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
 }
 
 function mostrarPopup(circulo, x, y) {
-  popup.style.left = x + 'px';
-  popup.style.top = y + 'px';
-  popup.style.display = 'block';
-  imgUrlInput.value = '';
-  imgFileInput.value = '';
+  popup.style.left = x + "px";
+  popup.style.top = y + "px";
+  popup.style.display = "block";
+  imgUrlInput.value = "";
+  imgFileInput.value = "";
 
   const listenerUrl = () => {
     const url = imgUrlInput.value;
@@ -561,53 +594,53 @@ function mostrarPopup(circulo, x, y) {
   };
 }
 
-document.addEventListener('keydown', (e) => {
+document.addEventListener("keydown", (e) => {
   // if (e.key === 'Escape') {
   //   ocultarPopup();
   //   finalizarEdicion();
   // }
-  if (e.key === 'Escape') {
-    editorTexto.style.display = 'none';
+  if (e.key === "Escape") {
+    editorTexto.style.display = "none";
     objetoEditando = null;
   }
-  if (e.key === 'Enter' && e.ctrlKey) {
+  if (e.key === "Enter" && e.ctrlKey) {
     if (objetoEditando) {
       objetoEditando.texto = editorTexto.value;
-      editorTexto.style.display = 'none';
+      editorTexto.style.display = "none";
       objetoEditando = null;
       dibujar();
     }
   }
-  if (e.code === 'Space' && !modoPanActivo) {
+  if (e.code === "Space" && !modoPanActivo) {
     modoPanActivo = true;
-    canvas.style.cursor = 'grab';
+    canvas.style.cursor = "grab";
   }
-  if (e.ctrlKey && e.key === 'z') return deshacer();
-  if (e.ctrlKey && e.key === 'y') return rehacer();
-  if (e.ctrlKey && e.key === 'd') return duplicar();
-  if (e.key === 'Delete') return eliminar();
+  if (e.ctrlKey && e.key === "z") return deshacer();
+  if (e.ctrlKey && e.key === "y") return rehacer();
+  if (e.ctrlKey && e.key === "d") return duplicar();
+  if (e.key === "Delete") return eliminar();
 });
-document.addEventListener('keyup', (e) => {
-  if (e.code === 'Space') {
+document.addEventListener("keyup", (e) => {
+  if (e.code === "Space") {
     modoPanActivo = false;
     desplazandoCanvas = false;
-    canvas.style.cursor = 'default';
+    canvas.style.cursor = "default";
   }
 });
 
 function ocultarPopup() {
-  popup.style.display = 'none';
-  imgUrlInput.value = '';
-  imgFileInput.value = '';
+  popup.style.display = "none";
+  imgUrlInput.value = "";
+  imgFileInput.value = "";
 }
 
 function manejarEntrada(e) {
   if (!objetoEditando) return;
-  if (e.key === 'Escape') return finalizarEdicion();
-  if (e.key === 'Backspace')
+  if (e.key === "Escape") return finalizarEdicion();
+  if (e.key === "Backspace")
     objetoEditando.texto = objetoEditando.texto.slice(0, -1);
   else if (e.key.length === 1) objetoEditando.texto += e.key;
-  canvas.style.cursor = 'text';
+  canvas.style.cursor = "text";
 
   dibujar();
 }
@@ -615,8 +648,8 @@ function manejarEntrada(e) {
 function finalizarEdicion() {
   if (objetoEditando) objetoEditando.seleccionado = false;
   objetoEditando = null;
-  document.removeEventListener('keydown', manejarEntrada);
-  canvas.removeEventListener('mousedown', finalizarEdicion);
+  document.removeEventListener("keydown", manejarEntrada);
+  canvas.removeEventListener("mousedown", finalizarEdicion);
   dibujar();
 }
 
@@ -625,27 +658,27 @@ const moverZ = (dir) => {
   objetosSeleccionados.forEach((obj) => {
     const i = objetos.indexOf(obj);
     objetos.splice(i, 1);
-    dir === 'frente' ? objetos.push(obj) : objetos.unshift(obj);
+    dir === "frente" ? objetos.push(obj) : objetos.unshift(obj);
   });
   dibujar();
 };
 
-document.getElementById('btnFrente').onclick = () => moverZ('frente');
-document.getElementById('btnFondo').onclick = () => moverZ('fondo');
+document.getElementById("btnFrente").onclick = () => moverZ("frente");
+document.getElementById("btnFondo").onclick = () => moverZ("fondo");
 
 // Exportar / Importar
 function exportarJSON() {
   const data = JSON.stringify(objetos);
-  const blob = new Blob([data], { type: 'application/json' });
-  const enlace = document.createElement('a');
+  const blob = new Blob([data], { type: "application/json" });
+  const enlace = document.createElement("a");
   enlace.href = URL.createObjectURL(blob);
-  enlace.download = 'mini_figma_design.json';
+  enlace.download = "mini_figma_design.json";
   enlace.click();
 }
 
-document.getElementById('btnExportar').onclick = exportarJSON;
+document.getElementById("btnExportar").onclick = exportarJSON;
 
-document.getElementById('btnImportar').onchange = (e) => {
+document.getElementById("btnImportar").onchange = (e) => {
   const archivo = e.target.files[0];
   if (!archivo) return;
   const lector = new FileReader();
@@ -671,7 +704,7 @@ document.getElementById('btnImportar').onchange = (e) => {
         .filter(Boolean);
       dibujar();
     } catch (e) {
-      console.error('Importación fallida', e);
+      console.error("Importación fallida", e);
     }
   };
   lector.readAsText(archivo);
@@ -743,27 +776,33 @@ function restaurarEstado(estado) {
 function actualizarCursor(offsetX, offsetY) {
   const { x, y } = transformarCoordenadas(offsetX, offsetY);
   if (textoRedimensionando) {
-    canvas.style.cursor = 'ew-resize';
+    canvas.style.cursor = "ew-resize";
     return;
+  }
+  for (const obj of objetos) {
+    if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
+      canvas.style.cursor = "nwse-resize";
+      return;
+    }
   }
 
   for (const obj of objetos) {
     if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
-      canvas.style.cursor = 'ew-resize';
+      canvas.style.cursor = "ew-resize";
       return;
     }
   }
 
   if (conectandoFlecha) {
-    canvas.style.cursor = 'crosshair';
+    canvas.style.cursor = "crosshair";
     return;
   }
 
   const hovering = objetos.some((obj) => obj.contienePunto(x, y));
   if (hovering) {
-    canvas.style.cursor = arrastrando ? 'grabbing' : 'move';
+    canvas.style.cursor = arrastrando ? "grabbing" : "move";
   } else {
-    canvas.style.cursor = 'default';
+    canvas.style.cursor = "default";
   }
 }
 function transformarCoordenadas(x, y) {
@@ -773,8 +812,8 @@ function transformarCoordenadas(x, y) {
   };
 }
 function autosizeTextarea(textarea) {
-  textarea.style.height = 'auto';
-  textarea.style.height = textarea.scrollHeight + 'px';
+  textarea.style.height = "auto";
+  textarea.style.height = textarea.scrollHeight + "px";
 }
 
 dibujar();
