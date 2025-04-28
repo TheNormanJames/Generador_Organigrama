@@ -277,15 +277,42 @@ class Flecha {
     if (obstaculo) {
       const medioX = (x1 + x2) / 2;
       ctx.moveTo(x1, y1);
-      ctx.lineTo(medioX, y1);
-      ctx.lineTo(medioX, y2);
-      ctx.lineTo(x2, y2);
+      ctx.quadraticCurveTo(medioX, y1, medioX, (y1 + y2) / 2);
+      ctx.quadraticCurveTo(medioX, y2, x2, y2);
     } else {
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
     }
     ctx.stroke();
+
+    // Dibujar la punta de flecha
+    this.dibujarPunta(ctx, x1, y1, x2, y2);
   }
+  dibujarPunta(ctx, x1, y1, x2, y2) {
+    const angulo = Math.atan2(y2 - y1, x2 - x1);
+
+    const tamañoFlecha = 10;
+    const espacioAntes = 8;
+
+    // Calcular la posición de la punta, dejando espacio antes del destino
+    const puntaX = x2 - espacioAntes * Math.cos(angulo);
+    const puntaY = y2 - espacioAntes * Math.sin(angulo);
+
+    ctx.beginPath();
+    ctx.moveTo(puntaX, puntaY);
+    ctx.lineTo(
+      puntaX - tamañoFlecha * Math.cos(angulo - Math.PI / 6),
+      puntaY - tamañoFlecha * Math.sin(angulo - Math.PI / 6)
+    );
+    ctx.lineTo(
+      puntaX - tamañoFlecha * Math.cos(angulo + Math.PI / 6),
+      puntaY - tamañoFlecha * Math.sin(angulo + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
+
   contienePunto() {
     return false;
   }
