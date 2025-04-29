@@ -42,7 +42,7 @@
 
           const inicio = performance.now(); // Tiempo justo antes del fetch
 
-          const respuesta = await fetch('https://back-gpt.onrender.com/chat', {
+          const respuesta = await fetch('http://localhost:3000/chat', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
