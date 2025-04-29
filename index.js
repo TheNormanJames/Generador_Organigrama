@@ -10,16 +10,7 @@ const usarExpress = express();
 
 
 //----------configuracion de datos-------------//
-//usarExpress.use( cors() );
-
-app.use(cors({
-  origin: 'https://www.eltiempo.com', // o '*' para todos los orígenes (no recomendado en producción)
-}));
-
-app.post('/chat', (req, res) => {
-  res.json({ message: 'CORS habilitado correctamente' });
-});
-
+usarExpress.use( cors() );
 usarExpress.use( express.json() );
 usarExpress.use( express.urlencoded( { extended:true }  ))
 
