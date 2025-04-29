@@ -1,11 +1,21 @@
-const chatForm    = document.getElementById('chatForm');
+    const chatForm    = document.getElementById('chatForm');
     const chatInput   = document.getElementById('chatInput');
+    
     const chatWindow  = document.getElementById('chatWindow');
+    const loadingDiv = document.querySelector(".base_contendor_loading");
 
+
+    // Quitar temporalmente el loading
+    if (loadingDiv) {
+        chatWindow.removeChild(loadingDiv);
+    }
 
     chatForm.addEventListener('submit', async function(e) {
 
       e.preventDefault();
+
+
+    
 
       const Mensaje = chatInput.value.trim();
       console.log(Mensaje)
@@ -82,6 +92,7 @@ const chatForm    = document.getElementById('chatForm');
 
 
         //----Respuesta del servidor----//
+
          setTimeout(() => {
             appendMensaje( respuestaOpenAi, 'boot', data);
           }, tiempoRespuesta);
@@ -95,7 +106,7 @@ const chatForm    = document.getElementById('chatForm');
 
 
     
-   function appendMensaje(mensaje, sender = "boot", data) {
+   function appendMensaje(mensaje, sender, data) {
 
       console.log(mensaje)
       console.log(sender)
@@ -126,14 +137,27 @@ const chatForm    = document.getElementById('chatForm');
 
         chatWindow.appendChild(lineaDeMensaje);
         chatWindow.scrollTop = chatWindow.scrollHeight;
-      }
 
+
+
+         // Volver a agregar el loading al final
+         if (mensaje.toLowerCase().startsWith("imagen:")) {
+          if (loadingDiv) {
+            chatWindow.appendChild(loadingDiv);
+          }
+        }
+       
+
+
+      }
 
 
 
 
       if (sender === 'boot'){ 
 
+
+      
             if(data.tipo == "texto"){
 
                  const lineaDeMensaje = document.createElement('div');
@@ -156,8 +180,14 @@ const chatForm    = document.getElementById('chatForm');
             }
 
             if( data.tipo == "imagen" ){
+              
+   
+              // Volver a agregar el loading al final
+              if (loadingDiv) {
+                chatWindow.removeChild(loadingDiv);
+              }
 
-              alert(" es una imagen")
+
 
                 let divImagen  = document.createElement('div');
                 let imagenData = document.createElement('img');
@@ -171,43 +201,18 @@ const chatForm    = document.getElementById('chatForm');
                 chatWindow.appendChild(divImagen);
                 divImagen.appendChild(imagenData)
                 divImagen.appendChild(botonDescarga)
-                botonDescarga.textContent = "Descargar imagen"
+                botonDescarga.textContent = "Abrir para descargar imagen"
 
                 imagenData.src = data.url
 
 
 
                 // abrir imagen en una nueva pestaña
-                imagenData.addEventListener("click", function(){
+                botonDescarga.addEventListener("click", function(){
 
                   window.open(data.url)
 
                 })
-
-
-
-                botonDescarga.addEventListener("click", function(event) {
-                    event.preventDefault();
-
-                    // Crear un enlace temporal para descargar la imagen como Blob
-                    fetch(imagenData.src)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            const a = document.createElement('a');
-                            const url = URL.createObjectURL(blob);
-                            a.href = url;
-                            a.download = 'imagen-GTP-ELTIEMPO';
-
-                            // Crear un clic para descargar sin abrir otra pestaña
-                            a.click();
-
-                            // Liberar el objeto URL creado
-                            URL.revokeObjectURL(url);
-                        })
-                        .catch(error => {
-                            console.error('Error al descargar la imagen:', error);
-                        });
-                });
 
             }
     
