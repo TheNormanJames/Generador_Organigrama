@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://use.typekit.net/mhq4nhy.css">
+  <title>Ventana de Chat</title>
+</head>
+
+
+<style type="text/css">
+  
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    height: 100vh;
+    margin: 0;
+}
+
+.chat-container {
+  width: 400px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-window {
+    height: 400px;
+    overflow-y: scroll;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+
+
+.Mensaje {
+    width: 100%;
+    display: table;
+    margin-bottom: 19px;
+    text-align: right;
+    width: auto;
+    float: right;
+}
+
+.Mensaje.user {
+    width: 100%;
+    display: table;
+    margin-bottom: 19px;
+    text-align: right;
+    float: right;
+}
+
+.Mensaje.user h2 {
+    font-size: 17px;
+    margin-bottom: 6px;
+    color: #1a73e8;
+}
+
+.Mensaje.user2 {
+    width: 100%;
+}
+
+.Mensaje.user2 h2 {
+    font-size: 17px;
+    margin-bottom: 5px;
+    color: #000000;
+    margin-left: 19px;
+}
+
+.Mensaje.user p {
+    padding: 5px 19px;
+    width: fit-content;
+    background-color: #1a73e8;
+    border-radius: 4px;
+    color: #fff;
+    float: right;
+    margin: 0px;
+    line-height: 22px;
+    font-family: "jali-latin-variable";
+    font-weight: 400;
+}
+
+form {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+    padding: 0 20px;
+    border: none;
+    background-color: #0f0f0f;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+
+.user2 {
+    text-align: left;
+    color: #666666;
+    font-size: 17px;
+    line-height: 22px;
+}
+
+.Mensaje.user2 p {
+    padding: 6px 19px;
+    width: fit-content;
+    /* background-color: #070707; */
+    border-radius: 8px;
+    color: #000000;
+    float: left;
+    margin: 0px;
+    line-height: 22px;
+    font-family: "jali-latin-variable";
+    font-weight: 300;
+}
+
+.icono_chat {
+    width: 48px;
+    cursor: pointer;
+    float: right;
+}
+
+.contenedor_principal_chat {
+    width: auto;
+    display: table;
+    position: absolute;
+    right: 37px;
+    bottom: 24px;
+}
+
+.icono_cerrar {
+    width: 36px;
+    position: absolute;
+    right: -17px;
+    top: -20px;
+    cursor: pointer;
+    background-color: #fff;
+    border-radius: 100%;
+}
+
+</style>
+
+
+<body>
+
+  <!----CHAT OPEN AI---->
+  <div class="contenedor_principal_chat">
+    <div class="chat-container">
+
+      <img src="icono_cerrar.png" class="icono_cerrar">
+
+      <div class="chat-window" id="chatWindow">
+        
+        <div class="Mensaje user2"><h2>Asistente EL TIEMPO</h2><p>¡Hola! ¿En qué puedo ayudarte hoy?</p></div>
+
+      </div>
+
+      <form id="chatForm">
+        <input type="text" id="chatInput" placeholder="¡Hola!, ¿Que buscas?" autocomplete="off">
+        <button type="submit">Enviar</button>
+      </form>
+    </div>
+
+    <img src="icono_chat.png" class="icono_chat">
+  </div>
+
+
+  <script type="text/javascript">
+    
+    const chatForm    = document.getElementById('chatForm');
+    const chatInput   = document.getElementById('chatInput');
+    const chatWindow  = document.getElementById('chatWindow');
+
+
+    chatForm.addEventListener('submit', async function(e) {
+
+      e.preventDefault();
+
+      const Mensaje = chatInput.value.trim();
+      console.log(Mensaje)
+
+      
+
+      let tiempoRespuesta;
+      let respuestaOpenAi;
+
+      if (Mensaje !== '') {
+
+        //enviamos el mensaje 
+        appendMensaje(Mensaje, 'usuario');
+
+        // limpiar input
+        chatInput.value = ''; 
+
+        
+        
+        //Enviar Mensaje al Backend
+         try {
+
+          const inicio = performance.now(); // Tiempo justo antes del fetch
+
+          const respuesta = await fetch('http://localhost:3000/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+            Mensaje,
+            UsuarioID : "carlos1234"
+             }) // Enviamos el mensaje como JSON
+          });
+
+          
+          const fin = performance.now(); // Tiempo justo después de la respuesta
+          tiempoRespuesta = fin - inicio;
+          console.log(`⏱️ Tiempo de respuesta del servidor: ${tiempoRespuesta.toFixed(2)} ms`);
+
+
+          if (!respuesta.ok) {
+            throw new Error('Error en la petición: ' + respuesta.statusText);
+          }
+
+          //----RESPUESTA OPEN AI---//
+          const data = await respuesta.json();
+          console.log(data)
+          console.log('Respuesta del servidor:', data.mensaje.choices[0].message.content );
+          respuestaOpenAi = data.mensaje.choices[0].message.content;
+
+
+
+
+
+        } catch (error) {
+
+          console.error('Error al enviar el mensaje:', error);
+        }
+  
+
+
+        //----Respuesta del servidor----//
+         setTimeout(() => {
+            appendMensaje( respuestaOpenAi, 'boot');
+          }, tiempoRespuesta);
+        
+        
+        
+      }
+      
+
+    });
+
+
+    
+   function appendMensaje(mensaje, sender) {
+      const contenedor = document.getElementById("contenedor-mensajes");
+
+      const lineaDeMensaje = document.createElement('div');
+      const titulo = document.createElement('h2'); // Creamos el h2
+      const parrafoNuevo = document.createElement('p');
+
+      lineaDeMensaje.classList.add('Mensaje');
+
+      if (sender === 'usuario') {
+        
+        lineaDeMensaje.classList.add('user');
+
+        titulo.textContent = "Tu"; // Texto del h2
+        parrafoNuevo.textContent = mensaje;
+
+        // Agregamos primero el h2, luego el p
+        lineaDeMensaje.appendChild(titulo);
+        lineaDeMensaje.appendChild(parrafoNuevo);
+
+        chatWindow.appendChild(lineaDeMensaje);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+
+
+
+      if (sender === 'boot'){ 
+
+         
+        lineaDeMensaje.classList.add('user2');
+
+        titulo.textContent = "Asistente EL TIEMPO"; // Texto del h2
+        parrafoNuevo.textContent = mensaje;
+
+        // Agregamos primero el h2, luego el p
+        lineaDeMensaje.appendChild(titulo);
+        lineaDeMensaje.appendChild(parrafoNuevo);
+
+        chatWindow.appendChild(lineaDeMensaje);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+      
+    
+    }
+
+
+
+    //--------------Abrir chat-----------//
+
+    let  botonChat     =  document.querySelector(".icono_chat")
+    let  ventanaChat   =  document.querySelector(".chat-container");
+
+    botonChat.addEventListener("click", function(){
+
+      ventanaChat.style.display = "block"; 
+      botonChat.style.display = "none";
+
+
+
+    });
+
+
+    //----cerrar chat-----//
+    let botonCerrar = document.querySelector(".icono_cerrar");
+
+    botonCerrar.addEventListener("click", function(){
+
+      ventanaChat.style.display = "none"; 
+      botonChat.style.display = "block";
+
+    })
+
+  </script>
+</body>
+</html>
