@@ -4,14 +4,37 @@
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
-   /* height: 100vh;*/
+    height: 100vh;
     margin: 0;
 }
 
 
-
 .contenedor_mini_figma {
     padding: 40px;
+}
+
+.div_imagen {
+    position: relative;
+    display: table;
+}
+
+.boton_descarga {
+    width: auto;
+    float: right;
+    margin: 0px 0px 18px 0px;
+    font-size: 14px;
+    background-color: #003c8b;
+    padding: 3px 8px 5px 8px;
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.imagen_GTP {
+    width: 90%;
+    float: right;
+    margin-bottom: 8px;
+    cursor: pointer;
 }
 
 .chat-container {

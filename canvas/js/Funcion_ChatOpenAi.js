@@ -15,10 +15,12 @@ const chatForm    = document.getElementById('chatForm');
       let tiempoRespuesta;
       let respuestaOpenAi;
 
+      let data;
+
       if (Mensaje !== '') {
 
         //enviamos el mensaje 
-        appendMensaje(Mensaje, 'usuario');
+        appendMensaje(Mensaje, 'usuario', []);
 
         // limpiar input
         chatInput.value = ''; 
@@ -52,14 +54,25 @@ const chatForm    = document.getElementById('chatForm');
           }
 
           //----RESPUESTA OPEN AI---//
-          const data = await respuesta.json();
+          data = await respuesta.json();
           console.log(data)
-          console.log('Respuesta del servidor:', data.mensaje.choices[0].message.content );
-          respuestaOpenAi = data.mensaje.choices[0].message.content;
+
+         
+         /* if(data.tipo == "texto"){
+
+             console.log('Respuesta del servidor:', data.mensaje.choices[0].message.content );
+             respuestaOpenAi = data.mensaje.choices[0].message.content;
+          
+          }else if( data.tipo == "imagen" ){
+
+             console.log('Respuesta del servidor:', data.url );
+             respuestaOpenAi = data.imagen;
+
+          }
+          */
 
 
-
-
+         
 
         } catch (error) {
 
@@ -70,7 +83,7 @@ const chatForm    = document.getElementById('chatForm');
 
         //----Respuesta del servidor----//
          setTimeout(() => {
-            appendMensaje( respuestaOpenAi, 'boot');
+            appendMensaje( respuestaOpenAi, 'boot', data);
           }, tiempoRespuesta);
         
         
@@ -82,17 +95,26 @@ const chatForm    = document.getElementById('chatForm');
 
 
     
-   function appendMensaje(mensaje, sender) {
+   function appendMensaje(mensaje, sender = "boot", data) {
+
+      console.log(mensaje)
+      console.log(sender)
+      console.log(data)
+
+
       const contenedor = document.getElementById("contenedor-mensajes");
 
-      const lineaDeMensaje = document.createElement('div');
-      const titulo = document.createElement('h2'); // Creamos el h2
-      const parrafoNuevo = document.createElement('p');
+      
 
-      lineaDeMensaje.classList.add('Mensaje');
 
       if (sender === 'usuario') {
         
+        const lineaDeMensaje = document.createElement('div');
+        const titulo = document.createElement('h2'); // Creamos el h2
+        const parrafoNuevo = document.createElement('p');
+        lineaDeMensaje.classList.add('Mensaje');
+
+
         lineaDeMensaje.classList.add('user');
 
         titulo.textContent = "Tu"; // Texto del h2
@@ -108,23 +130,89 @@ const chatForm    = document.getElementById('chatForm');
 
 
 
+
+
       if (sender === 'boot'){ 
 
-         
-        lineaDeMensaje.classList.add('user2');
+            if(data.tipo == "texto"){
 
-        titulo.textContent = "Asistente EL TIEMPO"; // Texto del h2
-        parrafoNuevo.textContent = mensaje;
+                 const lineaDeMensaje = document.createElement('div');
+                 const titulo = document.createElement('h2'); // Creamos el h2
+                 const parrafoNuevo = document.createElement('p');
+                 lineaDeMensaje.classList.add('Mensaje');
 
-        // Agregamos primero el h2, luego el p
-        lineaDeMensaje.appendChild(titulo);
-        lineaDeMensaje.appendChild(parrafoNuevo);
 
-        chatWindow.appendChild(lineaDeMensaje);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-      }
-      
+                 lineaDeMensaje.classList.add('user2');
+
+                  titulo.textContent = "Asistente EL TIEMPO"; // Texto del h2
+                  parrafoNuevo.textContent = data.soloMensaje;
+
+                  // Agregamos primero el h2, luego el p
+                  lineaDeMensaje.appendChild(titulo);
+                  lineaDeMensaje.appendChild(parrafoNuevo);
+
+                  chatWindow.appendChild(lineaDeMensaje);
+                  chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+
+            if( data.tipo == "imagen" ){
+
+              alert(" es una imagen")
+
+                let divImagen  = document.createElement('div');
+                let imagenData = document.createElement('img');
+                let botonDescarga = document.createElement('p')
+                
+                divImagen.classList.add('div_imagen');
+                imagenData.classList.add('imagen_GTP');
+                botonDescarga.classList.add('boton_descarga');
+
+
+                chatWindow.appendChild(divImagen);
+                divImagen.appendChild(imagenData)
+                divImagen.appendChild(botonDescarga)
+                botonDescarga.textContent = "Descargar imagen"
+
+                imagenData.src = data.url
+
+
+
+                // abrir imagen en una nueva pestaña
+                imagenData.addEventListener("click", function(){
+
+                  window.open(data.url)
+
+                })
+
+
+
+                botonDescarga.addEventListener("click", function(event) {
+                    event.preventDefault();
+
+                    // Crear un enlace temporal para descargar la imagen como Blob
+                    fetch(imagenData.src)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const a = document.createElement('a');
+                            const url = URL.createObjectURL(blob);
+                            a.href = url;
+                            a.download = 'imagen-GTP-ELTIEMPO';
+
+                            // Crear un clic para descargar sin abrir otra pestaña
+                            a.click();
+
+                            // Liberar el objeto URL creado
+                            URL.revokeObjectURL(url);
+                        })
+                        .catch(error => {
+                            console.error('Error al descargar la imagen:', error);
+                        });
+                });
+
+            }
     
+        }
+      
     }
 
 
