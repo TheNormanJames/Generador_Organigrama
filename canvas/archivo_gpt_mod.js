@@ -180,63 +180,6 @@ class Circulo {
     return Math.abs(x - handleX) <= 5 && Math.abs(y - handleY) <= 5;
   }
 }
-class ComponenteTexto {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.hijos = [
-      new Texto(x, y, "Título", 24, "#000000"),
-      new Texto(x, y + 30, "Sumario", 18, "#444"),
-      new Texto(x, y + 60, "Texto principal", 16, "#000"),
-      new Texto(x, y + 100, "Nombre del autor", 14, "#000"),
-      new Texto(x, y + 120, "Cargo del autor", 14, "#666"),
-      new Texto(x, y + 140, "Año", 14, "#999"),
-    ];
-    this.seleccionado = false;
-  }
-
-  dibujar(ctx) {
-    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
-    if (this.seleccionado) {
-      const ancho = Math.max(...this.hijos.map((h) => h.ancho));
-      const altoTotal = this.hijos.length * 30;
-      ctx.strokeStyle = "#00000088";
-      ctx.strokeRect(this.x - 10, this.y - 30, ancho + 20, altoTotal + 50);
-    }
-  }
-
-  contienePunto(x, y) {
-    return this.hijos.some((h) => h.contienePunto(x, y));
-  }
-
-  mover(dx, dy) {
-    this.x += dx;
-    this.y += dy;
-    this.hijos.forEach((h) => {
-      h.x += dx;
-      h.y += dy;
-    });
-  }
-
-  agregarTexto(tipo) {
-    let nuevoTexto;
-    switch (tipo) {
-      case "titulo":
-        nuevoTexto = new Texto(this.x, this.y, "Nuevo Título", 24, "#000");
-        break;
-      case "sumario":
-        nuevoTexto = new Texto(this.x, this.y, "Nuevo Sumario", 18, "#444");
-        break;
-      default:
-        nuevoTexto = new Texto(this.x, this.y, "Texto", 16, "#000");
-    }
-    this.hijos.push(nuevoTexto);
-  }
-
-  eliminarUltimo() {
-    if (this.hijos.length > 0) this.hijos.pop();
-  }
-}
 
 class Texto {
   constructor(x, y, texto, fontSize = 16, color = "black", ancho = 200) {
@@ -307,6 +250,71 @@ class Texto {
       y > this.y - this.fontSize &&
       y < this.y - this.fontSize + 8
     );
+  }
+}
+
+
+class ComponenteTexto {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hijos = [
+      new Texto(x, y, "Título", 24, "#000000"),
+      new Texto(x, y + 30, "Sumario", 18, "#444"),
+      new Texto(x, y + 60, "Texto principal", 16, "#000"),
+      new Texto(x, y + 100, "Nombre del autor", 14, "#000"),
+      new Texto(x, y + 120, "Cargo del autor", 14, "#666"),
+      new Texto(x, y + 140, "Año", 14, "#999"),
+    ];
+    this.seleccionado = false;
+  }
+
+  dibujar(ctx) {
+    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+    if (this.seleccionado) {
+      const ancho = Math.max(...this.hijos.map((h) => h.ancho));
+      const altoTotal = this.hijos.length * 30;
+      ctx.strokeStyle = "#00000088";
+      ctx.strokeRect(this.x - 10, this.y - 30, ancho + 20, altoTotal + 50);
+    }
+  }
+
+  contienePunto(x, y) {
+    return this.hijos.some((h) => h.contienePunto(x, y));
+  }
+
+  estaSobreHandler(x, y) {
+    return false;
+  }
+
+  mover(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+    this.hijos.forEach((h) => {
+      h.x += dx;
+      h.y += dy;
+    });
+  }
+
+  agregarTexto(tipo) {
+    let nuevoTexto;
+    switch (tipo) {
+      case "titulo":
+        nuevoTexto = new Texto(this.x, this.y, "Nuevo Título", 24, "#000");
+        break;
+      case "sumario":
+        nuevoTexto = new Texto(this.x, this.y, "Nuevo Sumario", 18, "#444");
+        break;
+      default:
+        nuevoTexto = new Texto(this.x, this.y, "Texto", 16, "#000");
+    }
+    nuevoTexto.x = this.x;
+    nuevoTexto.y = this.y + this.hijos.length * 30;
+    this.hijos.push(nuevoTexto);
+  }
+
+  eliminarUltimo() {
+    if (this.hijos.length > 0) this.hijos.pop();
   }
 }
 
@@ -414,7 +422,7 @@ function intersecta(linea, obj) {
 // Agregar objetos
 const crear = (tipo) => {
   if (tipo === "circulo") objetos.push(new Circulo(100, 100, 30, "blue"));
-  else if (tipo === "texto") objetos.push(new Texto(150, 150, "Hola!", 18));
+  else if (tipo === "texto") objetos.push(new ComponenteTexto(150, 150));
   else if (tipo === "flechaConectada") conectandoFlecha = true;
   dibujar();
 };
