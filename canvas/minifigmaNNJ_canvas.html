@@ -4,21 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MiniFigma</title>
-    
+
     <!--typekit-->
-    <link rel="stylesheet" href="https://use.typekit.net/mhq4nhy.css">
+    <link rel="stylesheet" href="https://use.typekit.net/mhq4nhy.css" />
 
     <!--CHAT GPT OPEN AI--->
-    <link rel="stylesheet" type="text/css" href="./css/style_CHAT.css?0864442">
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="./css/style_CHAT.css?0864442"
+    />
     <!--CHAT GPT OPEN AI--->
-
 
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body>
     <nav class="fixed top-0 left-0 w-full bg-white shadow-md z-10">
       <div
-        class="flex items-center justify-center space-x-2 p-2 overflow-x-auto"
+        class="flex flex-wrap items-center justify-center space-x-2 p-2 overflow-x-auto"
       >
         <button
           id="circleBtn"
@@ -30,8 +33,45 @@
           id="circleTexto"
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
+          Texto Supuestamente no existe
+        </button>
+        <button
+          id="btnTitulo"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Título
+        </button>
+        <button
+          id="btnSumario"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Sumario
+        </button>
+        <button
+          id="btnTexto"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
           Texto
         </button>
+        <button
+          id="btnAutor"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Autor
+        </button>
+        <button
+          id="btnCargo"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Cargo
+        </button>
+        <button
+          id="btnAnio"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Año
+        </button>
+
         <button
           id="circleFlecha"
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
@@ -67,30 +107,41 @@
 
     <canvas id="miCanvas" width="500" height="500"></canvas>
 
-
-
     <!----CHAT OPEN AI CARLOS---->
     <div class="contenedor_principal_chat">
       <div class="chat-container">
-        <img src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_cerrar.png" class="icono_cerrar">
+        <img
+          src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_cerrar.png"
+          class="icono_cerrar"
+        />
         <div class="chat-window" id="chatWindow">
-          <div class="Mensaje user2"><h2>Asistente EL TIEMPO</h2><p>¡Hola! ¿En qué puedo ayudarte hoy?</p></div>
+          <div class="Mensaje user2">
+            <h2>Asistente EL TIEMPO</h2>
+            <p>¡Hola! ¿En qué puedo ayudarte hoy?</p>
+          </div>
 
           <div class="base_contendor_loading">
-            <img src="./img/loading_imagen.gif" class="loading_chat"/>
+            <img src="./img/loading_imagen.gif" class="loading_chat" />
           </div>
         </div>
 
         <form id="chatForm">
-          <input type="text" id="chatInput" placeholder="¿Que buscas?" autocomplete="off">
+          <input
+            type="text"
+            id="chatInput"
+            placeholder="¿Que buscas?"
+            autocomplete="off"
+          />
           <button type="submit" class="boton_enviar">Enviar</button>
         </form>
       </div>
 
-      <img src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_chat.png" class="icono_chat">
+      <img
+        src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_chat.png"
+        class="icono_chat"
+      />
     </div>
-     <!----FIN CHAT OPEN AI CARLOS---->
-
+    <!----FIN CHAT OPEN AI CARLOS---->
 
     <!-- <script src="index.js" type="module"></script> -->
     <script type="module" src="./archivo_gpt.js"></script>
@@ -112,5 +163,4 @@
 
   <!--funcion Open AI-->
   <script type="text/javascript" src="./js/Funcion_ChatOpenAi.js"></script>
-
 </html>

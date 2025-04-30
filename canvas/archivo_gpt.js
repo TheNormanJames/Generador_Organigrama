@@ -421,6 +421,25 @@ const crear = (tipo) => {
 
 document.getElementById("circleBtn").onclick = () => crear("circulo");
 document.getElementById("circleTexto").onclick = () => crear("texto");
+document.getElementById("btnTitulo").onclick = () =>
+  crearTextoPersonalizado("Título", 36, "#111111", "center", 400);
+document.getElementById("btnSumario").onclick = () =>
+  crearTextoPersonalizado("Este es un sumario", 24, "#333333", "left", 400);
+document.getElementById("btnTexto").onclick = () =>
+  crearTextoPersonalizado(
+    "Párrafo de texto normal.",
+    18,
+    "#444444",
+    "justify",
+    400
+  );
+document.getElementById("btnAutor").onclick = () =>
+  crearTextoPersonalizado("Nombre del Autor", 20, "#000000", "left", 300);
+document.getElementById("btnCargo").onclick = () =>
+  crearTextoPersonalizado("Cargo del autor", 16, "#666666", "left", 300);
+document.getElementById("btnAnio").onclick = () =>
+  crearTextoPersonalizado("2024", 16, "#999999", "right", 100);
+
 document.getElementById("circleFlecha").onclick = () =>
   crear("flechaConectada");
 
@@ -898,6 +917,18 @@ function transformarCoordenadas(x, y) {
 function autosizeTextarea(textarea) {
   textarea.style.height = "auto";
   textarea.style.height = textarea.scrollHeight + "px";
+}
+function crearTextoPersonalizado(
+  texto,
+  fontSize,
+  color,
+  alineacion = "left",
+  ancho = 300
+) {
+  const nuevoTexto = new Texto(150, 150, texto, fontSize, color, ancho);
+  nuevoTexto.alineacion = alineacion;
+  objetos.push(nuevoTexto);
+  dibujar();
 }
 
 dibujar();
