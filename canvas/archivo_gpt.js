@@ -18,6 +18,8 @@ let offsetCanvas = { x: 0, y: 0 };
 let desplazandoCanvas = false;
 let ultimaPosMouse = { x: 0, y: 0 };
 let modoPanActivo = false;
+const minRadioCirculo = 20;
+const maxRadioCirculo = 60;
 
 const editorTexto = document.createElement("textarea");
 Object.assign(editorTexto.style, {
@@ -523,12 +525,18 @@ canvas.addEventListener("mousemove", ({ offsetX, offsetY }) => {
   if (!hoverResize) {
     canvas.style.cursor = arrastrando ? "grabbing" : "default";
   }
+
   if (arrastrando && circuloRedimensionando) {
     const nuevoRadio = Math.max(
       10,
       Math.hypot(x - circuloRedimensionando.x, y - circuloRedimensionando.y) - 5
     );
-    circuloRedimensionando.radio = nuevoRadio;
+
+    circuloRedimensionando.radio = Math.max(
+      Math.min(nuevoRadio, maxRadioCirculo),
+      minRadioCirculo
+    );
+
     dibujar();
     return;
   }
