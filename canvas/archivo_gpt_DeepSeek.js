@@ -1,0 +1,1057 @@
+// MiniFigma Optimizado - Versión Consolidada
+
+class MiniFigma {
+  constructor() {
+    this.canvas = document.getElementById("miCanvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.setupCanvas();
+
+    this.state = {
+      objetos: [],
+      objetosSeleccionados: [],
+      objetoEditando: null,
+      conectandoFlecha: false,
+      puntoInicioFlecha: null,
+      arrastrando: false,
+      gridSize: 20,
+      textoRedimensionando: null,
+      zoom: 1,
+      offsetCanvas: { x: 0, y: 0 },
+      desplazandoCanvas: false,
+      ultimaPosMouse: { x: 0, y: 0 },
+      modoPanActivo: false,
+      minRadioCirculo: 20,
+      maxRadioCirculo: 60,
+      circuloRedimensionando: null,
+      historial: [],
+      indiceHistorial: -1,
+      offsets: new Map(),
+    };
+
+    this.initUIElements();
+    this.setupEventListeners();
+    this.dibujar();
+  }
+
+  setupCanvas() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight - 65;
+
+    window.addEventListener("resize", () => {
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight - 65;
+      this.dibujar();
+    });
+  }
+
+  initUIElements() {
+    // Editor de texto
+    this.editorTexto = document.createElement("textarea");
+    Object.assign(this.editorTexto.style, {
+      position: "absolute",
+      display: "none",
+      fontFamily: "Inter, sans-serif",
+      fontSize: "16px",
+      border: "1px solid #d1d5db",
+      padding: "6px 8px",
+      zIndex: "1000",
+      resize: "none",
+      outline: "none",
+      backgroundColor: "white",
+      borderRadius: "6px",
+      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+      minHeight: "40px",
+      lineHeight: "1.5",
+      whiteSpace: "pre-wrap",
+      overflowWrap: "break-word",
+    });
+    this.editorTexto.addEventListener("input", () =>
+      this.autosizeTextarea(this.editorTexto)
+    );
+    document.body.appendChild(this.editorTexto);
+
+    // Barra de alineación
+    this.barraAlineacion = document.createElement("div");
+    Object.assign(this.barraAlineacion.style, {
+      position: "absolute",
+      display: "none",
+      background: "#fff",
+      border: "1px solid #ccc",
+      borderRadius: "6px",
+      padding: "4px",
+      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+      zIndex: "1001",
+      fontFamily: "sans-serif",
+    });
+
+    ["left", "center", "right", "justify"].forEach((alineacion) => {
+      const btn = document.createElement("button");
+      btn.textContent = alineacion[0].toUpperCase();
+      btn.title = alineacion;
+      Object.assign(btn.style, {
+        margin: "2px",
+        padding: "4px 6px",
+        fontSize: "14px",
+        cursor: "pointer",
+        border: "1px solid #ccc",
+        background: "#f9f9f9",
+        borderRadius: "4px",
+      });
+      btn.onclick = () => {
+        if (this.state.objetoEditando) {
+          this.state.objetoEditando.alineacion = alineacion;
+          this.editorTexto.style.textAlign = alineacion;
+        }
+      };
+      this.barraAlineacion.appendChild(btn);
+    });
+    document.body.appendChild(this.barraAlineacion);
+
+    // Popup para imágenes
+    this.popup = document.createElement("div");
+    this.popup.style.position = "absolute";
+    this.popup.style.padding = "10px";
+    this.popup.style.background = "white";
+    this.popup.style.border = "1px solid black";
+    this.popup.style.display = "none";
+    this.popup.innerHTML = `
+      <input type="text" placeholder="URL de imagen" id="imgUrl" style="display:block; margin-bottom:5px; width: 200px;"/>
+      <input type="file" id="imgFile" accept="image/*"/>
+    `;
+    document.body.appendChild(this.popup);
+
+    // Botones de la interfaz
+    document.getElementById("circleBtn").onclick = () => this.crear("circulo");
+    document.getElementById("circleTexto").onclick = () => this.crear("texto");
+    document.getElementById("btnTitulo").onclick = () =>
+      this.crearTextoPersonalizado("Título", 36, "#111111", "center", 400);
+    document.getElementById("btnSumario").onclick = () =>
+      this.crearTextoPersonalizado(
+        "Este es un sumario",
+        24,
+        "#333333",
+        "left",
+        400
+      );
+    document.getElementById("btnTexto").onclick = () =>
+      this.crearTextoPersonalizado(
+        "Párrafo de texto normal.",
+        18,
+        "#444444",
+        "justify",
+        400
+      );
+    document.getElementById("btnAutor").onclick = () =>
+      this.crearTextoPersonalizado(
+        "Nombre del Autor",
+        20,
+        "#000000",
+        "left",
+        300
+      );
+    document.getElementById("btnCargo").onclick = () =>
+      this.crearTextoPersonalizado(
+        "Cargo del autor",
+        16,
+        "#666666",
+        "left",
+        300
+      );
+    document.getElementById("btnAnio").onclick = () =>
+      this.crearTextoPersonalizado("2024", 16, "#999999", "right", 100);
+    document.getElementById("circleFlecha").onclick = () =>
+      this.crear("flechaConectada");
+    document.getElementById("btnFrente").onclick = () => this.moverZ("frente");
+    document.getElementById("btnFondo").onclick = () => this.moverZ("fondo");
+    document.getElementById("btnExportar").onclick = () => this.exportarJSON();
+    document.getElementById("btnImportar").onchange = (e) =>
+      this.importarJSON(e);
+  }
+
+  setupEventListeners() {
+    // Eventos del canvas
+    this.canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
+    this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+    this.canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e));
+    this.canvas.addEventListener("dblclick", (e) => this.handleDoubleClick(e));
+    this.canvas.addEventListener("wheel", (e) => this.handleWheel(e), {
+      passive: false,
+    });
+
+    // Eventos del teclado
+    document.addEventListener("keydown", (e) => this.handleKeyDown(e));
+    document.addEventListener("keyup", (e) => this.handleKeyUp(e));
+  }
+
+  // Métodos de dibujo y renderizado
+  dibujar() {
+    const { ctx, canvas, state } = this;
+    const { zoom, offsetCanvas } = state;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y);
+
+    // Dibujar flechas primero para que queden detrás
+    state.objetos
+      .filter((obj) => obj instanceof Flecha)
+      .forEach((obj) => obj.dibujar(ctx));
+
+    // Dibujar otros objetos
+    state.objetos
+      .filter((obj) => !(obj instanceof Flecha))
+      .forEach((obj) => obj.dibujar(ctx));
+  }
+
+  // Métodos de creación de objetos
+  crear(tipo) {
+    const { objetos } = this.state;
+
+    switch (tipo) {
+      case "circulo":
+        objetos.push(new Circulo(100, 100, 30, "blue"));
+        break;
+      case "texto":
+        objetos.push(new Texto(150, 150, "Hola!", 18));
+        break;
+      case "flechaConectada":
+        this.state.conectandoFlecha = true;
+        break;
+    }
+
+    this.guardarHistorial();
+    this.dibujar();
+  }
+
+  crearTextoPersonalizado(
+    texto,
+    fontSize,
+    color,
+    alineacion = "left",
+    ancho = 300
+  ) {
+    const nuevoTexto = new Texto(150, 150, texto, fontSize, color, ancho);
+    nuevoTexto.alineacion = alineacion;
+    this.state.objetos.push(nuevoTexto);
+    this.dibujar();
+  }
+
+  // Métodos de manejo de eventos
+  handleMouseDown(e) {
+    const { offsetX, offsetY, shiftKey } = e;
+    const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
+    const state = this.state;
+
+    this.actualizarCursor(x, y);
+    state.arrastrando = true;
+    state.textoRedimensionando = null;
+    state.circuloRedimensionando = null;
+
+    // Verificar handlers de redimensionamiento
+    for (const obj of state.objetos) {
+      if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
+        state.circuloRedimensionando = obj;
+        return;
+      }
+      if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
+        state.textoRedimensionando = obj;
+        return;
+      }
+    }
+
+    state.objetosSeleccionados = [];
+
+    // Selección de objetos
+    for (const obj of state.objetos) {
+      if (obj.contienePunto(x, y)) {
+        if (shiftKey) {
+          if (!state.objetosSeleccionados.includes(obj)) {
+            state.objetosSeleccionados.push(obj);
+            obj.seleccionado = true;
+          }
+        } else {
+          state.objetos.forEach((o) => (o.seleccionado = false));
+          state.objetosSeleccionados = [obj];
+          obj.seleccionado = true;
+        }
+        state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
+      }
+    }
+
+    // Conexión de flechas
+    if (state.conectandoFlecha && state.objetosSeleccionados.length === 1) {
+      if (!state.puntoInicioFlecha) {
+        state.puntoInicioFlecha = state.objetosSeleccionados[0];
+      } else {
+        const flecha = new Flecha(
+          state.puntoInicioFlecha,
+          state.objetosSeleccionados[0]
+        );
+        state.objetos.unshift(flecha);
+        state.conectandoFlecha = false;
+        state.puntoInicioFlecha = null;
+      }
+    }
+
+    // Modo pan
+    if (state.modoPanActivo) {
+      state.desplazandoCanvas = true;
+      state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
+      this.canvas.style.cursor = "grabbing";
+    }
+
+    this.guardarHistorial();
+    this.dibujar();
+  }
+
+  handleMouseMove(e) {
+    const { offsetX, offsetY } = e;
+    const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
+    const state = this.state;
+
+    this.actualizarCursor(x, y);
+
+    // Redimensionamiento de objetos
+    if (state.arrastrando && state.circuloRedimensionando) {
+      const nuevoRadio = Math.max(
+        10,
+        Math.hypot(
+          x - state.circuloRedimensionando.x,
+          y - state.circuloRedimensionando.y
+        ) - 5
+      );
+      state.circuloRedimensionando.radio = Math.max(
+        Math.min(nuevoRadio, state.maxRadioCirculo),
+        state.minRadioCirculo
+      );
+      this.dibujar();
+      return;
+    }
+
+    if (state.arrastrando && state.textoRedimensionando) {
+      const nuevoAncho = Math.max(30, x - state.textoRedimensionando.x);
+      state.textoRedimensionando.ancho = nuevoAncho;
+      this.dibujar();
+      return;
+    }
+
+    // Desplazamiento del canvas
+    if (state.desplazandoCanvas) {
+      const dx = e.clientX - state.ultimaPosMouse.x;
+      const dy = e.clientY - state.ultimaPosMouse.y;
+      state.offsetCanvas.x += dx;
+      state.offsetCanvas.y += dy;
+      state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
+      this.dibujar();
+      return;
+    }
+
+    // Movimiento de objetos
+    if (state.arrastrando) {
+      state.objetosSeleccionados.forEach((obj) => {
+        const o = state.offsets.get(obj);
+        if (o) {
+          obj.x = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
+          obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+        }
+      });
+      this.dibujar();
+    }
+  }
+
+  handleMouseUp(e) {
+    const { offsetX, offsetY } = e;
+    const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
+    const state = this.state;
+
+    state.circuloRedimensionando = null;
+    state.arrastrando = false;
+    state.desplazandoCanvas = false;
+    state.objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
+    state.offsets.clear();
+    state.textoRedimensionando = null;
+
+    this.actualizarCursor(x, y);
+    this.dibujar();
+  }
+
+  handleDoubleClick(e) {
+    const { clientX, clientY, offsetX, offsetY } = e;
+    const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
+    const state = this.state;
+
+    for (const obj of state.objetos) {
+      if (obj instanceof Circulo && obj.contienePunto(x, y)) {
+        this.mostrarPopup(obj, clientX, clientY);
+        return;
+      }
+      if (obj instanceof Texto && obj.contienePunto(x, y)) {
+        state.objetoEditando = obj;
+        this.mostrarEditorTexto(obj, x, y);
+        return;
+      }
+    }
+  }
+
+  handleWheel(e) {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+
+    const zoomFactor = 1.1;
+    const { offsetX, offsetY } = e;
+    const { x: mx, y: my } = this.transformarCoordenadas(offsetX, offsetY);
+    const state = this.state;
+
+    const nuevoZoom =
+      e.deltaY < 0 ? state.zoom * zoomFactor : state.zoom / zoomFactor;
+
+    // Mantener punto del mouse centrado al hacer zoom
+    state.offsetCanvas.x -= mx * nuevoZoom - mx * state.zoom;
+    state.offsetCanvas.y -= my * nuevoZoom - my * state.zoom;
+    state.zoom = nuevoZoom;
+
+    this.dibujar();
+  }
+
+  handleKeyDown(e) {
+    const state = this.state;
+
+    if (e.key === "Escape") {
+      this.editorTexto.style.display = "none";
+      state.objetoEditando = null;
+    }
+    if (e.key === "Enter" && e.ctrlKey) {
+      if (state.objetoEditando) {
+        state.objetoEditando.texto = this.editorTexto.value;
+        this.editorTexto.style.display = "none";
+        state.objetoEditando = null;
+        this.dibujar();
+      }
+    }
+    if (e.code === "Space" && !state.modoPanActivo) {
+      state.modoPanActivo = true;
+      this.canvas.style.cursor = "grab";
+    }
+    if (e.ctrlKey) {
+      if (e.key === "z") return this.deshacer();
+      if (e.key === "y") return this.rehacer();
+      if (e.key === "d") return this.duplicar();
+    }
+    if (e.key === "Delete") return this.eliminar();
+  }
+
+  handleKeyUp(e) {
+    if (e.code === "Space") {
+      this.state.modoPanActivo = false;
+      this.state.desplazandoCanvas = false;
+      this.canvas.style.cursor = "default";
+    }
+  }
+
+  // Métodos de UI
+  mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
+    this.editorTexto.value = textoObj.texto;
+    this.editorTexto.style.left = pantallaX + "px";
+    this.editorTexto.style.top = pantallaY + "px";
+    this.editorTexto.style.width = textoObj.ancho + "px";
+    this.editorTexto.style.height = "auto";
+    this.editorTexto.style.lineHeight = textoObj.fontSize + 4 + "px";
+    this.editorTexto.style.fontSize = textoObj.fontSize + "px";
+    this.editorTexto.style.display = "block";
+    this.editorTexto.style.textAlign = textoObj.alineacion || "left";
+
+    this.barraAlineacion.style.left = pantallaX + "px";
+    this.barraAlineacion.style.top = pantallaY - 40 + "px";
+    this.barraAlineacion.style.display = "flex";
+
+    this.editorTexto.focus();
+    this.autosizeTextarea(this.editorTexto);
+
+    this.editorTexto.onblur = () => {
+      textoObj.texto = this.editorTexto.value;
+      this.editorTexto.style.display = "none";
+      this.barraAlineacion.style.display = "none";
+      this.state.objetoEditando = null;
+      this.dibujar();
+    };
+  }
+
+  mostrarPopup(circulo, x, y) {
+    this.popup.style.left = x + "px";
+    this.popup.style.top = y + "px";
+    this.popup.style.display = "block";
+
+    const imgUrlInput = this.popup.querySelector("#imgUrl");
+    const imgFileInput = this.popup.querySelector("#imgFile");
+    imgUrlInput.value = "";
+    imgFileInput.value = "";
+
+    const listenerUrl = () => {
+      const url = imgUrlInput.value;
+      const img = new Image();
+      img.onload = () => {
+        circulo.imagen = img;
+        this.dibujar();
+        this.ocultarPopup();
+      };
+      img.src = url;
+    };
+
+    imgUrlInput.onchange = listenerUrl;
+    imgFileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            circulo.imagen = img;
+            this.dibujar();
+            this.ocultarPopup();
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+  }
+
+  ocultarPopup() {
+    this.popup.style.display = "none";
+    const imgUrlInput = this.popup.querySelector("#imgUrl");
+    const imgFileInput = this.popup.querySelector("#imgFile");
+    imgUrlInput.value = "";
+    imgFileInput.value = "";
+  }
+
+  // Métodos de gestión de objetos
+  moverZ(dir) {
+    this.state.objetosSeleccionados.forEach((obj) => {
+      const i = this.state.objetos.indexOf(obj);
+      this.state.objetos.splice(i, 1);
+      dir === "frente"
+        ? this.state.objetos.push(obj)
+        : this.state.objetos.unshift(obj);
+    });
+    this.dibujar();
+  }
+
+  duplicar() {
+    this.guardarHistorial();
+    this.state.objetosSeleccionados.forEach((obj) => {
+      let copia = null;
+      if (obj instanceof Circulo) {
+        copia = new Circulo(obj.x + 20, obj.y + 20, obj.radio, obj.color);
+      } else if (obj instanceof Texto) {
+        copia = new Texto(
+          obj.x + 20,
+          obj.y + 20,
+          obj.texto,
+          obj.fontSize,
+          obj.color,
+          obj.ancho
+        );
+      }
+      if (copia) this.state.objetos.push(copia);
+    });
+    this.guardarHistorial();
+    this.dibujar();
+  }
+
+  eliminar() {
+    this.state.objetos = this.state.objetos.filter(
+      (obj) => !this.state.objetosSeleccionados.includes(obj)
+    );
+    this.guardarHistorial();
+    this.dibujar();
+  }
+
+  // Métodos de historial
+  guardarHistorial() {
+    const { historial, indiceHistorial } = this.state;
+
+    this.state.historial = historial.slice(0, indiceHistorial + 1);
+    const snapshot = JSON.stringify(this.state.objetos);
+    this.state.historial.push(snapshot);
+    if (this.state.historial.length > 20) this.state.historial.shift();
+    this.state.indiceHistorial = this.state.historial.length - 1;
+  }
+
+  deshacer() {
+    if (this.state.indiceHistorial > 0) {
+      this.state.indiceHistorial--;
+      const estadoPrevio = JSON.parse(
+        this.state.historial[this.state.indiceHistorial]
+      );
+      this.restaurarEstado(estadoPrevio);
+    }
+  }
+
+  rehacer() {
+    if (this.state.indiceHistorial < this.state.historial.length - 1) {
+      this.state.indiceHistorial++;
+      const estadoFuturo = JSON.parse(
+        this.state.historial[this.state.indiceHistorial]
+      );
+      this.restaurarEstado(estadoFuturo);
+    }
+  }
+
+  restaurarEstado(estado) {
+    this.state.objetos = estado
+      .map((obj) => {
+        if (obj.radio) return new Circulo(obj.x, obj.y, obj.radio, obj.color);
+        if (obj.texto) {
+          return new Texto(
+            obj.x,
+            obj.y,
+            obj.texto,
+            obj.fontSize,
+            obj.color,
+            obj.ancho
+          );
+        }
+        if (obj.origen && obj.destino) {
+          return new Flecha(obj.origen, obj.destino, obj.color);
+        }
+        return null;
+      })
+      .filter(Boolean);
+    this.dibujar();
+  }
+
+  // Métodos de importación/exportación
+  exportarJSON() {
+    // Convertir imágenes a base64 para incluirlas en el JSON
+    const objetosParaExportar = this.state.objetos.map((obj) => {
+      if (obj instanceof Circulo && obj.imagen) {
+        // Crear un objeto clonado con la imagen como base64
+        const canvas = document.createElement("canvas");
+        canvas.width = obj.radio * 2;
+        canvas.height = obj.radio * 2;
+        const ctx = canvas.getContext("2d");
+
+        // Dibujar la imagen en el canvas
+        ctx.beginPath();
+        ctx.arc(obj.radio, obj.radio, obj.radio, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(obj.imagen, 0, 0, obj.radio * 2, obj.radio * 2);
+
+        return {
+          ...obj,
+          imagenBase64: canvas.toDataURL(),
+          // Guardar referencia temporal para las flechas
+          tempId: obj.tempId || this.generarIdUnico(),
+        };
+      }
+
+      // Para flechas, guardar referencias a los objetos conectados
+      if (obj instanceof Flecha) {
+        return {
+          ...obj,
+          origenTempId: obj.origen.tempId || this.generarIdUnico(),
+          destinoTempId: obj.destino.tempId || this.generarIdUnico(),
+        };
+      }
+
+      // Para otros objetos, guardar referencia temporal
+      return {
+        ...obj,
+        tempId: obj.tempId || this.generarIdUnico(),
+      };
+    });
+
+    const data = JSON.stringify(objetosParaExportar);
+    const blob = new Blob([data], { type: "application/json" });
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = "mini_figma_design.json";
+    enlace.click();
+  }
+
+  importarJSON(e) {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    const lector = new FileReader();
+    lector.onload = async ({ target }) => {
+      try {
+        const parsed = JSON.parse(target.result);
+
+        // Primera pasada: crear objetos básicos y mapear IDs temporales
+        const idMap = new Map();
+        const objetosCargados = [];
+
+        for (const objData of parsed) {
+          let nuevoObj;
+
+          if (objData.radio !== undefined) {
+            nuevoObj = new Circulo(
+              objData.x,
+              objData.y,
+              objData.radio,
+              objData.color
+            );
+
+            // Cargar imagen si existe
+            if (objData.imagenBase64) {
+              nuevoObj.imagen = await this.cargarImagenDesdeBase64(
+                objData.imagenBase64
+              );
+            }
+
+            objetosCargados.push(nuevoObj);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoObj);
+          } else if (objData.texto !== undefined) {
+            nuevoObj = new Texto(
+              objData.x,
+              objData.y,
+              objData.texto,
+              objData.fontSize,
+              objData.color,
+              objData.ancho
+            );
+            nuevoObj.alineacion = objData.alineacion || "left";
+            objetosCargados.push(nuevoObj);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoObj);
+          } else if (objData.origenTempId && objData.destinoTempId) {
+            // Flecha - se procesará en segunda pasada
+            objetosCargados.push(objData);
+          }
+        }
+
+        // Segunda pasada: procesar flechas
+        const objetosFinales = objetosCargados.filter(
+          (obj) => !(obj.origenTempId && obj.destinoTempId)
+        );
+
+        for (const objData of objetosCargados) {
+          if (objData.origenTempId && objData.destinoTempId) {
+            const origen = idMap.get(objData.origenTempId);
+            const destino = idMap.get(objData.destinoTempId);
+
+            if (origen && destino) {
+              objetosFinales.unshift(
+                new Flecha(origen, destino, objData.color)
+              );
+            }
+          }
+        }
+
+        this.state.objetos = objetosFinales;
+        this.dibujar();
+      } catch (e) {
+        console.error("Importación fallida", e);
+        alert(
+          "Error al importar el archivo. Asegúrate de que es un archivo válido."
+        );
+      }
+    };
+    lector.readAsText(archivo);
+  }
+
+  // Nuevos métodos auxiliares
+  generarIdUnico() {
+    return Math.random().toString(36).substr(2, 9);
+  }
+
+  cargarImagenDesdeBase64(base64) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.src = base64;
+    });
+  }
+
+  // Métodos de utilidad
+  actualizarCursor(x, y) {
+    const state = this.state;
+
+    if (state.textoRedimensionando) {
+      this.canvas.style.cursor = "ew-resize";
+      return;
+    }
+
+    for (const obj of state.objetos) {
+      if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
+        this.canvas.style.cursor = "nwse-resize";
+        return;
+      }
+      if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
+        this.canvas.style.cursor = "ew-resize";
+        return;
+      }
+    }
+
+    if (state.conectandoFlecha) {
+      this.canvas.style.cursor = "crosshair";
+      return;
+    }
+
+    const hovering = state.objetos.some((obj) => obj.contienePunto(x, y));
+    this.canvas.style.cursor = state.arrastrando
+      ? "grabbing"
+      : hovering
+      ? "move"
+      : "default";
+  }
+
+  transformarCoordenadas(x, y) {
+    const { zoom, offsetCanvas } = this.state;
+    return {
+      x: (x - offsetCanvas.x) / zoom,
+      y: (y - offsetCanvas.y) / zoom,
+    };
+  }
+
+  autosizeTextarea(textarea) {
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+  }
+}
+
+// Clases de objetos del canvas
+class Circulo {
+  constructor(x, y, radio, color, imagen = null) {
+    this.x = x;
+    this.y = y;
+    this.radio = radio;
+    this.color = color;
+    this.seleccionado = false;
+    this.imagen = imagen;
+  }
+
+  dibujar(ctx) {
+    if (this.imagen) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radio, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        this.imagen,
+        this.x - this.radio,
+        this.y - this.radio,
+        this.radio * 2,
+        this.radio * 2
+      );
+      ctx.restore();
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radio, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    if (this.seleccionado) {
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    if (this.seleccionado) {
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(this.x + this.radio + 5, this.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  contienePunto(x, y) {
+    return Math.hypot(x - this.x, y - this.y) < this.radio;
+  }
+
+  estaSobreHandler(x, y) {
+    const handleX = this.x + this.radio + 5;
+    const handleY = this.y;
+    return Math.hypot(x - handleX, y - handleY) <= 5;
+  }
+}
+
+class Texto {
+  constructor(x, y, texto, fontSize = 16, color = "black", ancho = 200) {
+    this.x = x;
+    this.y = y;
+    this.texto = texto;
+    this.fontSize = fontSize;
+    this.color = color;
+    this.seleccionado = false;
+    this.ancho = ancho;
+    this.alineacion = "left";
+  }
+
+  dibujar(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.font = `${this.fontSize}px Arial`;
+    const lineas = this.dividirTextoEnLineas(ctx);
+
+    lineas.forEach((l, i) => {
+      ctx.textAlign = this.alineacion;
+      let textoX = this.x;
+      if (this.alineacion === "center") textoX = this.x + this.ancho / 2;
+      if (this.alineacion === "right") textoX = this.x + this.ancho;
+
+      ctx.fillText(l.trim(), textoX, this.y + i * (this.fontSize + 4));
+    });
+
+    if (this.seleccionado) {
+      const alto = lineas.length * (this.fontSize + 4);
+      ctx.strokeStyle = "#000000cc";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        this.x - 5,
+        this.y - this.fontSize,
+        this.ancho + 10,
+        alto + 10
+      );
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
+    }
+  }
+
+  dividirTextoEnLineas(ctx) {
+    const lineas = [];
+    let palabras = this.texto.split(" ");
+    let linea = "";
+
+    for (let palabra of palabras) {
+      const prueba = linea + palabra + " ";
+      if (ctx.measureText(prueba).width > this.ancho) {
+        lineas.push(linea);
+        linea = palabra + " ";
+      } else {
+        linea = prueba;
+      }
+    }
+    lineas.push(linea);
+    return lineas;
+  }
+
+  contienePunto(x, y) {
+    const lineHeight = this.fontSize + 4;
+    const lineas = this.texto.split("\n").length || 1;
+    const alto = lineas * lineHeight;
+
+    return (
+      x > this.x &&
+      x < this.x + this.ancho &&
+      y > this.y - this.fontSize &&
+      y < this.y + alto
+    );
+  }
+
+  estaSobreHandler(x, y) {
+    return (
+      x > this.x + this.ancho + 5 &&
+      x < this.x + this.ancho + 13 &&
+      y > this.y - this.fontSize &&
+      y < this.y - this.fontSize + 8
+    );
+  }
+}
+
+class Flecha {
+  constructor(origen, destino, color = "black") {
+    this.origen = origen;
+    this.destino = destino;
+    this.color = color;
+  }
+
+  dibujar(ctx) {
+    const { x: x1, y: y1 } = this.calcularBorde(this.origen, this.destino);
+    const { x: x2, y: y2 } = this.calcularBorde(this.destino, this.origen);
+
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const obstaculo = this.detectarObstaculo(x1, y1, x2, y2);
+
+    if (obstaculo) {
+      const medioX = (x1 + x2) / 2;
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(medioX, y1, medioX, (y1 + y2) / 2);
+      ctx.quadraticCurveTo(medioX, y2, x2, y2);
+    } else {
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+
+    this.dibujarPunta(ctx, x1, y1, x2, y2);
+  }
+
+  calcularBorde(origen, destino) {
+    const dx = destino.x - origen.x;
+    const dy = destino.y - origen.y;
+    const ang = Math.atan2(dy, dx);
+    const r = origen.radio || 0;
+    return {
+      x: origen.x + r * Math.cos(ang),
+      y: origen.y + r * Math.sin(ang),
+    };
+  }
+
+  detectarObstaculo(x1, y1, x2, y2) {
+    const margen = 10;
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
+
+    return MiniFigma.instance.state.objetos.find((obj) => {
+      if (obj === this.origen || obj === this.destino) return false;
+
+      if (obj instanceof Circulo) {
+        return (
+          obj.x + obj.radio > minX - margen &&
+          obj.x - obj.radio < maxX + margen &&
+          obj.y + obj.radio > minY - margen &&
+          obj.y - obj.radio < maxY + margen
+        );
+      } else if (obj instanceof Texto) {
+        return (
+          obj.x < maxX + margen &&
+          obj.x + obj.ancho > minX - margen &&
+          obj.y < maxY + margen &&
+          obj.y > minY - margen
+        );
+      }
+      return false;
+    });
+  }
+
+  dibujarPunta(ctx, x1, y1, x2, y2) {
+    const angulo = Math.atan2(y2 - y1, x2 - x1);
+    const tamañoFlecha = 10;
+    const espacioAntes = 8;
+
+    // Calcular la posición de la punta, dejando espacio antes del destino
+    const puntaX = x2 - espacioAntes * Math.cos(angulo);
+    const puntaY = y2 - espacioAntes * Math.sin(angulo);
+
+    ctx.beginPath();
+    ctx.moveTo(puntaX, puntaY);
+    ctx.lineTo(
+      puntaX - tamañoFlecha * Math.cos(angulo - Math.PI / 6),
+      puntaY - tamañoFlecha * Math.sin(angulo - Math.PI / 6)
+    );
+    ctx.lineTo(
+      puntaX - tamañoFlecha * Math.cos(angulo + Math.PI / 6),
+      puntaY - tamañoFlecha * Math.sin(angulo + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
+
+  contienePunto() {
+    return false;
+  }
+}
+
+// Inicialización de la aplicación
+document.addEventListener("DOMContentLoaded", () => {
+  MiniFigma.instance = new MiniFigma();
+});

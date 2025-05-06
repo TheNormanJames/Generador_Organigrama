@@ -582,8 +582,10 @@ canvas.addEventListener(
         return;
       }
       if (obj instanceof Texto && obj.contienePunto(x, y)) {
+        console.log(obj, x, y);
+
         objetoEditando = obj;
-        mostrarEditorTexto(obj, offsetX, offsetY);
+        mostrarEditorTexto(obj, x, y);
         return;
       }
     }
