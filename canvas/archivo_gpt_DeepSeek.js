@@ -619,51 +619,101 @@ class MiniFigma {
 
   // Métodos de importación/exportación
   exportarJSON() {
-    // Convertir imágenes a base64 para incluirlas en el JSON
-    const objetosParaExportar = this.state.objetos.map((obj) => {
-      if (obj instanceof Circulo && obj.imagen) {
-        // Crear un objeto clonado con la imagen como base64
+    // Función para convertir imagen a Base64
+    const convertirImagenABase64 = (circulo) => {
+      return new Promise((resolve) => {
+        if (!circulo.imagen) {
+          resolve(null);
+          return;
+        }
+
         const canvas = document.createElement("canvas");
-        canvas.width = obj.radio * 2;
-        canvas.height = obj.radio * 2;
+        canvas.width = circulo.radio * 2;
+        canvas.height = circulo.radio * 2;
         const ctx = canvas.getContext("2d");
 
         // Dibujar la imagen en el canvas
         ctx.beginPath();
-        ctx.arc(obj.radio, obj.radio, obj.radio, 0, Math.PI * 2);
+        ctx.arc(circulo.radio, circulo.radio, circulo.radio, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(obj.imagen, 0, 0, obj.radio * 2, obj.radio * 2);
+        ctx.drawImage(
+          circulo.imagen,
+          0,
+          0,
+          circulo.radio * 2,
+          circulo.radio * 2
+        );
 
-        return {
-          ...obj,
-          imagenBase64: canvas.toDataURL(),
-          // Guardar referencia temporal para las flechas
-          tempId: obj.tempId || this.generarIdUnico(),
-        };
+        resolve(canvas.toDataURL());
+      });
+    };
+
+    // Asignar IDs temporales a todos los objetos
+    this.state.objetos.forEach((obj) => {
+      if (!obj.tempId) {
+        obj.tempId = this.generarIdUnico();
       }
-
-      // Para flechas, guardar referencias a los objetos conectados
-      if (obj instanceof Flecha) {
-        return {
-          ...obj,
-          origenTempId: obj.origen.tempId || this.generarIdUnico(),
-          destinoTempId: obj.destino.tempId || this.generarIdUnico(),
-        };
-      }
-
-      // Para otros objetos, guardar referencia temporal
-      return {
-        ...obj,
-        tempId: obj.tempId || this.generarIdUnico(),
-      };
     });
 
-    const data = JSON.stringify(objetosParaExportar);
-    const blob = new Blob([data], { type: "application/json" });
-    const enlace = document.createElement("a");
-    enlace.href = URL.createObjectURL(blob);
-    enlace.download = "mini_figma_design.json";
-    enlace.click();
+    // Procesar todos los objetos para exportación
+    Promise.all(
+      this.state.objetos.map(async (obj) => {
+        const objData = { type: obj.constructor.name };
+
+        if (obj instanceof Circulo) {
+          objData.x = obj.x;
+          objData.y = obj.y;
+          objData.radio = obj.radio;
+          objData.color = obj.color;
+          objData.tempId = obj.tempId;
+          objData.imagenBase64 = await convertirImagenABase64(obj);
+        } else if (obj instanceof Texto) {
+          objData.x = obj.x;
+          objData.y = obj.y;
+          objData.texto = obj.texto;
+          objData.fontSize = obj.fontSize;
+          objData.color = obj.color;
+          objData.ancho = obj.ancho;
+          objData.alineacion = obj.alineacion;
+          objData.tempId = obj.tempId;
+        } else if (obj instanceof Flecha) {
+          objData.origenTempId = obj.origen.tempId;
+          objData.destinoTempId = obj.destino.tempId;
+          objData.color = obj.color;
+        } else if (obj instanceof ComponenteTexto) {
+          objData.x = obj.x;
+          objData.y = obj.y;
+          objData.ancho = obj.ancho;
+          objData.tempId = obj.tempId;
+          objData.hijos = obj.hijos.map((hijo) => {
+            return {
+              x: hijo.x,
+              y: hijo.y,
+              texto: hijo.texto,
+              fontSize: hijo.fontSize,
+              color: hijo.color,
+              ancho: hijo.ancho,
+              alineacion: hijo.alineacion,
+              tempId: hijo.tempId || this.generarIdUnico(),
+            };
+          });
+        }
+
+        return objData;
+      })
+    )
+      .then((objetosParaExportar) => {
+        const data = JSON.stringify(objetosParaExportar);
+        const blob = new Blob([data], { type: "application/json" });
+        const enlace = document.createElement("a");
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = "mini_figma_design.json";
+        enlace.click();
+      })
+      .catch((error) => {
+        console.error("Error al exportar:", error);
+        alert("Ocurrió un error al exportar el diseño");
+      });
   }
 
   importarJSON(e) {
@@ -675,55 +725,74 @@ class MiniFigma {
       try {
         const parsed = JSON.parse(target.result);
 
-        // Primera pasada: crear objetos básicos y mapear IDs temporales
+        // Mapa para guardar relaciones entre IDs temporales y objetos
         const idMap = new Map();
         const objetosCargados = [];
 
+        // Primera pasada: crear todos los objetos básicos
         for (const objData of parsed) {
-          let nuevoObj;
-
-          if (objData.radio !== undefined) {
-            nuevoObj = new Circulo(
+          if (objData.type === "Circulo") {
+            const nuevoCirculo = new Circulo(
               objData.x,
               objData.y,
               objData.radio,
               objData.color
             );
 
-            // Cargar imagen si existe
             if (objData.imagenBase64) {
-              nuevoObj.imagen = await this.cargarImagenDesdeBase64(
+              nuevoCirculo.imagen = await this.cargarImagenDesdeBase64(
                 objData.imagenBase64
               );
             }
 
-            objetosCargados.push(nuevoObj);
-            if (objData.tempId) idMap.set(objData.tempId, nuevoObj);
-          } else if (objData.texto !== undefined) {
-            nuevoObj = new Texto(
+            objetosCargados.push(nuevoCirculo);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoCirculo);
+          } else if (objData.type === "Texto") {
+            const nuevoTexto = new Texto(
               objData.x,
               objData.y,
               objData.texto,
               objData.fontSize,
               objData.color,
-              objData.ancho
+              objData.ancho,
+              objData.alineacion
             );
-            nuevoObj.alineacion = objData.alineacion || "left";
-            objetosCargados.push(nuevoObj);
-            if (objData.tempId) idMap.set(objData.tempId, nuevoObj);
-          } else if (objData.origenTempId && objData.destinoTempId) {
-            // Flecha - se procesará en segunda pasada
+            objetosCargados.push(nuevoTexto);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
+          } else if (objData.type === "ComponenteTexto") {
+            // Crear los hijos primero
+            const hijos = objData.hijos.map((hijoData) => {
+              const hijo = new Texto(
+                hijoData.x,
+                hijoData.y,
+                hijoData.texto,
+                hijoData.fontSize,
+                hijoData.color,
+                hijoData.ancho,
+                hijoData.alineacion
+              );
+              if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
+              return hijo;
+            });
+
+            const nuevoComponente = new ComponenteTexto(objData.x, objData.y);
+            nuevoComponente.hijos = hijos;
+            nuevoComponente.ancho = objData.ancho;
+            objetosCargados.push(nuevoComponente);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
+          } else if (objData.type === "Flecha") {
+            // Guardar datos de flecha para procesar después
             objetosCargados.push(objData);
           }
         }
 
         // Segunda pasada: procesar flechas
         const objetosFinales = objetosCargados.filter(
-          (obj) => !(obj.origenTempId && obj.destinoTempId)
+          (obj) => obj.type !== "Flecha"
         );
 
         for (const objData of objetosCargados) {
-          if (objData.origenTempId && objData.destinoTempId) {
+          if (objData.type === "Flecha") {
             const origen = idMap.get(objData.origenTempId);
             const destino = idMap.get(objData.destinoTempId);
 
@@ -749,7 +818,7 @@ class MiniFigma {
 
   // Nuevos métodos auxiliares
   generarIdUnico() {
-    return Math.random().toString(36).substr(2, 9);
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
   }
 
   cargarImagenDesdeBase64(base64) {
@@ -875,12 +944,20 @@ class ComponenteTexto {
       new Texto(x, y + 80, "Texto principal", 18, "#444444", 400, "justify"),
       new Texto(x, y + 180, "Nombre del autor", 20, "#000000", 300, "left"),
       new Texto(x, y + 210, "Cargo del autor", 16, "#666666", 300, "left"),
-      new Texto(x + 200, y + 210, "2024", 16, "#999999", 100, "right"),
+      new Texto(x + 200, y + 210, "2025", 16, "#999999", 100, "right"),
     ];
     this.seleccionado = false;
-    this.ancho = 400; // Ancho base del componente
+    this.ancho = 400;
+
+    // Asignar IDs temporales a los hijos
+    this.hijos.forEach((hijo) => {
+      hijo.tempId = this.generarIdUnico();
+    });
   }
 
+  generarIdUnico() {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  }
   dibujar(ctx) {
     // Dibujar todos los hijos
     this.hijos.forEach((hijo) => hijo.dibujar(ctx));
