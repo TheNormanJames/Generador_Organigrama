@@ -122,43 +122,9 @@ class MiniFigma {
 
     // Botones de la interfaz
     document.getElementById("circleBtn").onclick = () => this.crear("circulo");
-    document.getElementById("circleTexto").onclick = () => this.crear("texto");
-    document.getElementById("btnTitulo").onclick = () =>
-      this.crearTextoPersonalizado("Título", 36, "#111111", "center", 400);
-    document.getElementById("btnSumario").onclick = () =>
-      this.crearTextoPersonalizado(
-        "Este es un sumario",
-        24,
-        "#333333",
-        "left",
-        400
-      );
-    document.getElementById("btnTexto").onclick = () =>
-      this.crearTextoPersonalizado(
-        "Párrafo de texto normal.",
-        18,
-        "#444444",
-        "justify",
-        400
-      );
-    document.getElementById("btnAutor").onclick = () =>
-      this.crearTextoPersonalizado(
-        "Nombre del Autor",
-        20,
-        "#000000",
-        "left",
-        300
-      );
-    document.getElementById("btnCargo").onclick = () =>
-      this.crearTextoPersonalizado(
-        "Cargo del autor",
-        16,
-        "#666666",
-        "left",
-        300
-      );
-    document.getElementById("btnAnio").onclick = () =>
-      this.crearTextoPersonalizado("2024", 16, "#999999", "right", 100);
+    // document.getElementById("circleTexto").onclick = () => this.crear("texto");
+    document.getElementById("btnComponenteTexto").onclick = () =>
+      this.crear("componenteTexto");
     document.getElementById("circleFlecha").onclick = () =>
       this.crear("flechaConectada");
     document.getElementById("btnFrente").onclick = () => this.moverZ("frente");
@@ -214,6 +180,9 @@ class MiniFigma {
         break;
       case "texto":
         objetos.push(new Texto(150, 150, "Hola!", 18));
+        break;
+      case "componenteTexto":
+        objetos.push(new ComponenteTexto(150, 150));
         break;
       case "flechaConectada":
         this.state.conectandoFlecha = true;
@@ -275,7 +244,13 @@ class MiniFigma {
           state.objetosSeleccionados = [obj];
           obj.seleccionado = true;
         }
-        state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
+
+        // Para ComponenteTexto, guardar offset del punto de click
+        if (obj instanceof ComponenteTexto) {
+          state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
+        } else {
+          state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
+        }
       }
     }
 
@@ -352,8 +327,19 @@ class MiniFigma {
       state.objetosSeleccionados.forEach((obj) => {
         const o = state.offsets.get(obj);
         if (o) {
-          obj.x = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
-          obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+          if (obj instanceof ComponenteTexto) {
+            // Mover todo el componente
+            const newX =
+              Math.round((x - o.dx) / state.gridSize) * state.gridSize;
+            const newY =
+              Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+            const dx = newX - obj.x;
+            const dy = newY - obj.y;
+            obj.mover(dx, dy);
+          } else {
+            obj.x = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
+            obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+          }
         }
       });
       this.dibujar();
@@ -390,6 +376,16 @@ class MiniFigma {
         state.objetoEditando = obj;
         this.mostrarEditorTexto(obj, x, y);
         return;
+      }
+      if (obj instanceof ComponenteTexto && obj.contienePunto(x, y)) {
+        // Buscar qué texto dentro del componente fue clickeado
+        for (let i = 0; i < obj.hijos.length; i++) {
+          if (obj.hijos[i].contienePunto(x, y)) {
+            state.objetoEditando = obj.hijos[i];
+            this.mostrarEditorTexto(obj.hijos[i], x, y);
+            return;
+          }
+        }
       }
     }
   }
@@ -868,8 +864,79 @@ class Circulo {
   }
 }
 
+// Añadir nueva clase ComponenteTexto
+class ComponenteTexto {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hijos = [
+      new Texto(x, y, "Título", 36, "#111111", 400, "center"),
+      new Texto(x, y + 40, "Sumario", 24, "#333333", 400, "left"),
+      new Texto(x, y + 80, "Texto principal", 18, "#444444", 400, "justify"),
+      new Texto(x, y + 180, "Nombre del autor", 20, "#000000", 300, "left"),
+      new Texto(x, y + 210, "Cargo del autor", 16, "#666666", 300, "left"),
+      new Texto(x + 200, y + 210, "2024", 16, "#999999", 100, "right"),
+    ];
+    this.seleccionado = false;
+    this.ancho = 400; // Ancho base del componente
+  }
+
+  dibujar(ctx) {
+    // Dibujar todos los hijos
+    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+
+    // Dibujar borde de selección
+    if (this.seleccionado) {
+      const altoTotal = this.calcularAltoTotal();
+      ctx.strokeStyle = "#00000088";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x - 10, this.y - 30, this.ancho + 20, altoTotal + 50);
+    }
+  }
+
+  calcularAltoTotal() {
+    // Calcular el alto total basado en la posición del último elemento
+    const ultimoHijo = this.hijos[this.hijos.length - 1];
+    return ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
+  }
+
+  contienePunto(x, y) {
+    const altoTotal = this.calcularAltoTotal();
+    return (
+      x > this.x - 10 &&
+      x < this.x + this.ancho + 10 &&
+      y > this.y - 30 &&
+      y < this.y + altoTotal + 20
+    );
+  }
+
+  mover(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+    this.hijos.forEach((h) => {
+      h.x += dx;
+      h.y += dy;
+    });
+  }
+
+  // Método para editar un texto específico del componente
+  editarTexto(indice, nuevoTexto) {
+    if (indice >= 0 && indice < this.hijos.length) {
+      this.hijos[indice].texto = nuevoTexto;
+    }
+  }
+}
+
 class Texto {
-  constructor(x, y, texto, fontSize = 16, color = "black", ancho = 200) {
+  constructor(
+    x,
+    y,
+    texto,
+    fontSize = 16,
+    color = "black",
+    ancho = 200,
+    alineacion = "left"
+  ) {
     this.x = x;
     this.y = y;
     this.texto = texto;
@@ -877,7 +944,7 @@ class Texto {
     this.color = color;
     this.seleccionado = false;
     this.ancho = ancho;
-    this.alineacion = "left";
+    this.alineacion = alineacion;
   }
 
   dibujar(ctx) {
