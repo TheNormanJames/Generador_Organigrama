@@ -123,8 +123,12 @@ class MiniFigma {
     // Botones de la interfaz
     document.getElementById("circleBtn").onclick = () => this.crear("circulo");
     // document.getElementById("circleTexto").onclick = () => this.crear("texto");
-    document.getElementById("btnComponenteTexto").onclick = () =>
-      this.crear("componenteTexto");
+    // document.getElementById("btnComponenteTexto").onclick = () =>
+    // this.crear("componenteTexto");
+    document.getElementById("btnTituloSumario").onclick = () =>
+      this.crear("tituloSumario");
+    document.getElementById("btnTituloCargo").onclick = () =>
+      this.crear("tituloCargo");
     document.getElementById("circleFlecha").onclick = () =>
       this.crear("flechaConectada");
     document.getElementById("btnFrente").onclick = () => this.moverZ("frente");
@@ -181,8 +185,11 @@ class MiniFigma {
       case "texto":
         objetos.push(new Texto(150, 150, "Hola!", 18));
         break;
-      case "componenteTexto":
-        objetos.push(new ComponenteTexto(150, 150));
+      case "tituloSumario":
+        objetos.push(new ComponenteTituloSumario(150, 150));
+        break;
+      case "tituloCargo":
+        objetos.push(new ComponenteTituloCargo(150, 150));
         break;
       case "flechaConectada":
         this.state.conectandoFlecha = true;
@@ -327,7 +334,11 @@ class MiniFigma {
       state.objetosSeleccionados.forEach((obj) => {
         const o = state.offsets.get(obj);
         if (o) {
-          if (obj instanceof ComponenteTexto) {
+          if (
+            obj instanceof ComponenteTexto ||
+            obj instanceof ComponenteTituloSumario ||
+            obj instanceof ComponenteTituloCargo
+          ) {
             // Mover todo el componente
             const newX =
               Math.round((x - o.dx) / state.gridSize) * state.gridSize;
@@ -377,7 +388,12 @@ class MiniFigma {
         this.mostrarEditorTexto(obj, x, y);
         return;
       }
-      if (obj instanceof ComponenteTexto && obj.contienePunto(x, y)) {
+      if (
+        (obj instanceof ComponenteTexto ||
+          obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo) &&
+        obj.contienePunto(x, y)
+      ) {
         // Buscar qué texto dentro del componente fue clickeado
         for (let i = 0; i < obj.hijos.length; i++) {
           if (obj.hijos[i].contienePunto(x, y)) {
@@ -680,6 +696,26 @@ class MiniFigma {
           objData.origenTempId = obj.origen.tempId;
           objData.destinoTempId = obj.destino.tempId;
           objData.color = obj.color;
+        } else if (
+          obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo
+        ) {
+          objData.x = obj.x;
+          objData.y = obj.y;
+          objData.ancho = obj.ancho;
+          objData.tempId = obj.tempId;
+          objData.hijos = obj.hijos.map((hijo) => {
+            return {
+              x: hijo.x,
+              y: hijo.y,
+              texto: hijo.texto,
+              fontSize: hijo.fontSize,
+              color: hijo.color,
+              ancho: hijo.ancho,
+              alineacion: hijo.alineacion,
+              tempId: hijo.tempId,
+            };
+          });
         } else if (obj instanceof ComponenteTexto) {
           objData.x = obj.x;
           objData.y = obj.y;
@@ -778,6 +814,36 @@ class MiniFigma {
             const nuevoComponente = new ComponenteTexto(objData.x, objData.y);
             nuevoComponente.hijos = hijos;
             nuevoComponente.ancho = objData.ancho;
+            objetosCargados.push(nuevoComponente);
+            if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
+          } else if (
+            objData.type === "ComponenteTituloSumario" ||
+            objData.type === "ComponenteTituloCargo"
+          ) {
+            const ClaseComponente =
+              objData.type === "ComponenteTituloSumario"
+                ? ComponenteTituloSumario
+                : ComponenteTituloCargo;
+
+            const nuevoComponente = new ClaseComponente(objData.x, objData.y);
+            nuevoComponente.ancho = objData.ancho;
+
+            // Reconstruir hijos
+            nuevoComponente.hijos = objData.hijos.map((hijoData) => {
+              const hijo = new Texto(
+                hijoData.x,
+                hijoData.y,
+                hijoData.texto,
+                hijoData.fontSize,
+                hijoData.color,
+                hijoData.ancho,
+                hijoData.alineacion
+              );
+              hijo.tempId = hijoData.tempId;
+              idMap.set(hijoData.tempId, hijo);
+              return hijo;
+            });
+
             objetosCargados.push(nuevoComponente);
             if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           } else if (objData.type === "Flecha") {
@@ -1001,6 +1067,131 @@ class ComponenteTexto {
     if (indice >= 0 && indice < this.hijos.length) {
       this.hijos[indice].texto = nuevoTexto;
     }
+  }
+}
+// Nuevas clases para los componentes
+class ComponenteTituloSumario {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hijos = [
+      new Texto(x, y, "Título Principal", 36, "#111111", 400, "center"),
+      new Texto(x, y + 50, "Sumario descriptivo", 24, "#333333", 400, "center"),
+    ];
+    this.seleccionado = false;
+    this.ancho = 400;
+    this.type = "ComponenteTituloSumario";
+
+    // Asignar IDs temporales
+    this.hijos.forEach((hijo) => {
+      hijo.tempId = this.generarIdUnico();
+    });
+    this.tempId = MiniFigma.instance.generarIdUnico();
+  }
+  generarIdUnico() {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  }
+
+  dibujar(ctx) {
+    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+
+    if (this.seleccionado) {
+      const altoTotal = this.hijos[1].y - this.y + this.hijos[1].fontSize + 20;
+      ctx.strokeStyle = "#00000088";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
+    }
+  }
+
+  contienePunto(x, y) {
+    const ultimoHijo = this.hijos[this.hijos.length - 1];
+    const altoTotal = ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
+    return (
+      x > this.x - 10 &&
+      x < this.x + this.ancho + 10 &&
+      y > this.y - 10 &&
+      y < this.y + altoTotal + 10
+    );
+  }
+
+  mover(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+    this.hijos.forEach((h) => {
+      h.x += dx;
+      h.y += dy;
+    });
+  }
+}
+
+class ComponenteTituloCargo {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hijos = [
+      new Texto(x, y, "Título Secundario", 28, "#111111", 400, "left"),
+      new Texto(x, y + 40, "Cargo o Posición", 18, "#666666", 400, "left"),
+      new Texto(
+        x,
+        y + 70,
+        "Texto complementario o descripción adicional del cargo y responsabilidades.",
+        16,
+        "#444444",
+        400,
+        "left"
+      ),
+    ];
+    this.seleccionado = false;
+    this.ancho = 400;
+    this.type = "ComponenteTituloCargo";
+
+    // Asignar IDs temporales
+    this.hijos.forEach((hijo) => {
+      hijo.tempId = this.generarIdUnico();
+    });
+    this.tempId = MiniFigma.instance.generarIdUnico();
+  }
+
+  generarIdUnico() {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  }
+
+  dibujar(ctx) {
+    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+
+    if (this.seleccionado) {
+      const ultimoHijo = this.hijos[this.hijos.length - 1];
+      const lineas = ultimoHijo.texto.split("\n").length || 1;
+      const altoTotal =
+        ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+
+      ctx.strokeStyle = "#00000088";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
+    }
+  }
+
+  contienePunto(x, y) {
+    const ultimoHijo = this.hijos[this.hijos.length - 1];
+    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    const altoTotal =
+      ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+
+    return (
+      x > this.x - 10 &&
+      x < this.x + this.ancho + 10 &&
+      y > this.y - 10 &&
+      y < this.y + altoTotal + 10
+    );
+  }
+
+  mover(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+    this.hijos.forEach((h) => {
+      h.x += dx;
+      h.y += dy;
+    });
   }
 }
 
