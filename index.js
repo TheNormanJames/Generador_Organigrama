@@ -20,12 +20,13 @@ usarExpress.use( express.urlencoded( { extended:true }  ))
 //---creamos servidor----//
   usarExpress.listen(3000, (req, resp) => {
 
-    console.log(`Servidor escuchando en http://localhost:3000`);
-    
+    //console.log(`Servidor escuchando en http://localhost:3000`);
+    console.log("Conectar al servidor por render");
+
   });
 
 
-  
+
 
   //---importamos rutas---//
   const rutaMensaje = require("./rutas/rutaMensaje");
