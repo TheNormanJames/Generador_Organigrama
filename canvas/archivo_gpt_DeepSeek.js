@@ -644,23 +644,19 @@ class MiniFigma {
         }
 
         const canvas = document.createElement("canvas");
-        canvas.width = circulo.radio * 2;
-        canvas.height = circulo.radio * 2;
+        // Usar el tamaño original de la imagen
+        canvas.width = circulo.imagen.naturalWidth || circulo.imagen.width;
+        canvas.height = circulo.imagen.naturalHeight || circulo.imagen.height;
         const ctx = canvas.getContext("2d");
 
-        // Dibujar la imagen en el canvas
-        ctx.beginPath();
-        ctx.arc(circulo.radio, circulo.radio, circulo.radio, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(
-          circulo.imagen,
-          0,
-          0,
-          circulo.radio * 2,
-          circulo.radio * 2
-        );
+        // Dibujar la imagen completa sin recortar
+        ctx.drawImage(circulo.imagen, 0, 0, canvas.width, canvas.height);
 
-        resolve(canvas.toDataURL());
+        resolve({
+          dataURL: canvas.toDataURL(),
+          width: canvas.width,
+          height: canvas.height,
+        });
       });
     };
 
@@ -682,7 +678,12 @@ class MiniFigma {
           objData.radio = obj.radio;
           objData.color = obj.color;
           objData.tempId = obj.tempId;
-          objData.imagenBase64 = await convertirImagenABase64(obj);
+          if (obj.imagen) {
+            const imagenData = await convertirImagenABase64(obj);
+            objData.imagenBase64 = imagenData.dataURL;
+            objData.imagenWidth = imagenData.width;
+            objData.imagenHeight = imagenData.height;
+          }
         } else if (obj instanceof Texto) {
           objData.x = obj.x;
           objData.y = obj.y;
@@ -777,7 +778,9 @@ class MiniFigma {
 
             if (objData.imagenBase64) {
               nuevoCirculo.imagen = await this.cargarImagenDesdeBase64(
-                objData.imagenBase64
+                objData.imagenBase64,
+                objData.imagenWidth,
+                objData.imagenHeight
               );
             }
 
@@ -887,10 +890,15 @@ class MiniFigma {
     return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
   }
 
-  cargarImagenDesdeBase64(base64) {
+  cargarImagenDesdeBase64(base64, width, height) {
     return new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => resolve(img);
+      img.onload = () => {
+        // Guardar las dimensiones originales
+        img.originalWidth = width || img.width;
+        img.originalHeight = height || img.height;
+        resolve(img);
+      };
       img.src = base64;
     });
   }
@@ -959,13 +967,35 @@ class Circulo {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radio, 0, Math.PI * 2);
       ctx.clip();
+
+      // Usar las dimensiones originales guardadas
+      const imgWidth = this.imagen.originalWidth || this.imagen.width;
+      const imgHeight = this.imagen.originalHeight || this.imagen.height;
+      const imgAspect = imgWidth / imgHeight;
+      const circleAspect = 1;
+
+      let drawWidth, drawHeight, offsetX, offsetY;
+
+      if (imgAspect > circleAspect) {
+        drawHeight = this.radio * 2;
+        drawWidth = drawHeight * imgAspect;
+        offsetX = -(drawWidth - this.radio * 2) / 2;
+        offsetY = 0;
+      } else {
+        drawWidth = this.radio * 2;
+        drawHeight = drawWidth / imgAspect;
+        offsetX = 0;
+        offsetY = -(drawHeight - this.radio * 2) / 2;
+      }
+
       ctx.drawImage(
         this.imagen,
-        this.x - this.radio,
-        this.y - this.radio,
-        this.radio * 2,
-        this.radio * 2
+        this.x - this.radio + offsetX,
+        this.y - this.radio + offsetY,
+        drawWidth,
+        drawHeight
       );
+
       ctx.restore();
     } else {
       ctx.fillStyle = this.color;
