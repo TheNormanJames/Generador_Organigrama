@@ -25,6 +25,8 @@ usarExpress.use( express.urlencoded( { extended:true }  ))
   });
 
 
+  
+
   //---importamos rutas---//
   const rutaMensaje = require("./rutas/rutaMensaje");
   usarExpress.use(rutaMensaje)

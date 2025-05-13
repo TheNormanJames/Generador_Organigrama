@@ -9,6 +9,7 @@ const usarRuta = express.Router();
 const controlador = require("../controlador/mensaje")
 
 
+
 //----crear ruta
 usarRuta.post('/chat', controlador.mensajeFront )
 

@@ -71,6 +71,7 @@ const mensajeFront = async (req, resp) => {
       });
 
 
+      
       const imageUrl = response.data[0].url;
 
        // Opcional: también puedes guardar este "evento" en el historial
