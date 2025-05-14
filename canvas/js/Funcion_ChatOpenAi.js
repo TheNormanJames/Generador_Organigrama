@@ -299,7 +299,8 @@
           const inicio = performance.now(); // Tiempo justo antes del fetch
 
           
-          const respuesta = await fetch('http://localhost:3000', { 
+          
+          const respuesta = await fetch('https://back-gpt-owso.onrender.com/chat', { 
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -601,8 +602,6 @@
 
       ventanaChat.style.display = "none"; 
       botonChat.style.display = "block";
-
-
 
     })
 
