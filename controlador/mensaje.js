@@ -5,6 +5,8 @@
 require('dotenv').config();
 
 
+// taemos aixos
+const axios = require('axios');
 
 
 //IMPORTACION DE SDK para conectarse con OPEN AI
@@ -16,17 +18,24 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY //---llave key---//
 });
 
+
+
 //  Aquí se guardan los historiales por usuario
 const historialesPorUsuario = {};
 
 
-
+console.log("api2 " + process.env.API_KEY_NEWS_API)
 
 
 
 //La funcion principal que recibe parametros del frontend
 const mensajeFront = async (req, resp) => {
   
+
+  const apiKey = process.env.API_KEY_GOOGLE;
+  const cx = process.env.CX_GOOGLE;
+
+
   const mensajeChat = req.body.Mensaje;
   const usuarioId   = req.body.UsuarioId || 'anonimo'; // Usar algún identificador de usuario
 
@@ -58,7 +67,7 @@ const mensajeFront = async (req, resp) => {
   try {
 
   
-    if (mensajeChat.toLowerCase().startsWith("imagen:") || mensajeChat.toLowerCase().startsWith("dibuja:") ) {
+    if (mensajeChat.toLowerCase().startsWith("imagen:") ) {
       const descripcion = mensajeChat.replace(/^imagen:|^dibuja:/i, "").trim();
 
       //console.log("mensaje" + descripcion)
@@ -98,54 +107,131 @@ const mensajeFront = async (req, resp) => {
 
 
 
-    //-------------FLUJO NORMAL DE TEXTO ------------//
+    //-------------FLUJO NORMAL DE TEXTO GOOGLE------------//
+    if(mensajeChat.toLowerCase().startsWith("google:") ) {
 
-    //  Agregar a ese historial el primer mensaje
-    message_history.push({
-      role: "user",
-      content: mensajeChat
-    });
+          const tema = mensajeChat.replace(/^google:/i, "").trim();
 
+       
+          const respuesta = await axios.get('https://www.googleapis.com/customsearch/v1', {
+            params: {
+              key: apiKey,
+              cx: cx,
+              q: tema,
+              lr: 'lang_es', // solo español
+              num: 2 // resultados a mostrar
+            }
+          });
 
+        
 
-    // nos conectamos al modelo gpt-4o-mini
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', 
-      messages: message_history //envio el historial para la consulta
-    });
+          const resultados = respuesta.data.items.map((item) => ({
+            titulo: item.title,
+            descripcion: item.snippet,
+            enlace: item.link
+          }));
 
-
-
-    // respuesta del asistente del modelo de OPEN AI
-    const respuestaAsistente = response.choices[0].message.content;
-
-    //console.log("mensaje asistente:" + respuestaAsistente)
-
-
-
-  
-    // Agregar al asitente (osea la respuesta) al historial de conversacion
-    message_history.push({
-      role: "assistant",
-      content: respuestaAsistente
-    });
-
+          console.log(resultados);
+          
+          return resp.status(200).json({
+              resultado: resultados
+          })
+    }
 
 
 
-    //console.log(message_history)
+    //-----FLUJO PARA BUSCAR IMAGEN-----//
+    if(mensajeChat.toLowerCase().startsWith("google imagen:") ) {
+
+          const tema = mensajeChat.replace(/^google imagen:/i, "").trim();
+
+          const respuesta = await axios.get('https://www.googleapis.com/customsearch/v1', {
+            params: {
+              key: apiKey,
+              cx: cx,
+              q: tema,
+              searchType: 'image',
+              lr: 'lang_es', // solo español
+              num: 2 // resultados a mostrar
+            }
+          });
+
+        
+
+          const resultados = respuesta.data.items.map((item) => ({
+            titulo: item.title,
+            descripcion: item.snippet,
+            enlace: item.link
+          }));
+
+          console.log(resultados);
+          
+          return resp.status(200).json({
+              resultado: resultados
+          })
+
+    }
+
+          /*
+            return resp.status(200).json({
+              tipo: "texto",
+              soloMensaje: "No encontré noticias recientes sobre ese tema.",
+              historial: message_history
+            });
+            */
+        
 
 
 
-    // ENVIO LA RESPUESTA AL FRONTEND
-    resp.status(200).json({
-      mensaje: response,
-      tipo:"texto",
-      soloMensaje: respuestaAsistente,
-      historial: message_history
-    });
+           /*
+          // Agrega la petición al historial
+          message_history.push({
+            role: "user",
+            content: `Noticias recientes sobre: ${tema}`
+          });
 
 
+           // nos conectamos al modelo gpt-4o-mini
+          const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini', 
+            messages: [
+                ...message_history,
+                {
+                  role: "system",
+                  content: "Eres un asistente que resume noticias recientes. Sé claro, profesional y breve."
+                },
+                {
+                  role: "user",
+                  content: `Estas son las noticias:\n${resumen}\n\nHaz un resumen y comenta lo más importante.`
+                }
+              ]
+          });
+
+          const resumenFinal = response.choices[0].message.content;
+
+        
+
+
+
+        
+          // Agregar al asitente (osea la respuesta) al historial de conversacion
+          message_history.push({
+            role: "assistant",
+            content: resumenFinal
+          });
+
+
+
+          // ENVIO LA RESPUESTA AL FRONTEND
+          resp.status(200).json({
+            mensaje: response,
+            tipo:"texto",
+            soloMensaje: resumenFinal,
+            historial: message_history
+          });
+          */
+
+    
 
 
   } catch (error) {
