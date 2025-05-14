@@ -67,7 +67,7 @@ const mensajeFront = async (req, resp) => {
   try {
 
   
-    if (mensajeChat.toLowerCase().startsWith("imagen:") ) {
+    if ( mensajeChat.toLowerCase().startsWith("imagen:") ) {
       const descripcion = mensajeChat.replace(/^imagen:|^dibuja:/i, "").trim();
 
       //console.log("mensaje" + descripcion)
@@ -107,6 +107,54 @@ const mensajeFront = async (req, resp) => {
 
 
 
+    //-----------fujo de texto OPEN AI-------------//
+
+
+    /*
+        // nos conectamos al modelo gpt-4o-mini
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o-mini', 
+          messages: message_history //envio el historial para la consulta
+        });
+
+
+
+        // respuesta del asistente del modelo de OPEN AI
+        const respuestaAsistente = response.choices[0].message.content;
+
+        //console.log("mensaje asistente:" + respuestaAsistente)
+
+
+
+      
+        // Agregar al asitente (osea la respuesta) al historial de conversacion
+        message_history.push({
+          role: "assistant",
+          content: respuestaAsistente
+        });
+
+
+
+
+        //console.log(message_history)
+
+
+
+        // ENVIO LA RESPUESTA AL FRONTEND
+        resp.status(200).json({
+          mensaje: response,
+          tipo:"texto",
+          soloMensaje: respuestaAsistente,
+          historial: message_history
+        });
+
+    
+
+*/
+
+
+
+
     //-------------FLUJO NORMAL DE TEXTO GOOGLE------------//
     if(mensajeChat.toLowerCase().startsWith("google:") ) {
 
@@ -137,6 +185,10 @@ const mensajeFront = async (req, resp) => {
               resultado: resultados
           })
     }
+
+
+
+
 
 
 
