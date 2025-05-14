@@ -31,6 +31,10 @@
             botones_google.style.display = "table";
         }, 500)
 
+
+        // logo en la cinta
+        document.querySelector(".logo_google_informativo").src ="./img/google.png"
+
     })
 
     //seleccionar motor AI
@@ -46,6 +50,9 @@
       setTimeout( () => {
         botonesAI.style.display = "table"
       }, 500)
+
+      // logo en la cinta
+      document.querySelector(".logo_google_informativo").src ="./img/openai2.png"
 
     })
 
@@ -85,6 +92,11 @@
     let btnImagen_AI = document.querySelector(".imagen_AI");
     
 
+    //cerrar controaldores de google y open ai
+    let iconoCerrarBusqueda = document.querySelector(".icono_cerrar_motor_busqueda");
+    let contenedorCinta     = document.querySelector(".base_cinta_informativa");
+
+
     //Botones google
     let num  = 1;
     let num2 = 1;
@@ -93,6 +105,7 @@
 
 
     btnTextoGoogle.addEventListener("click", () => {
+
 
       //boton azul//
         btnImagenGoogle.classList.remove('image_google_seleccionado');
@@ -107,6 +120,8 @@
          num = 0;
          document.querySelector(".input_mensaje").disabled = false;
          document.querySelector(".input_mensaje").style.backgroundColor = "#fff"
+
+         iconoCerrarBusqueda.style.display = "table";
       
         }else{
           Mensaje1 = ""
@@ -115,9 +130,11 @@
           document.querySelector(".input_mensaje").disabled = true;
          document.querySelector(".input_mensaje").style.backgroundColor = "#d4d4d4"
 
-        
+         iconoCerrarBusqueda.style.display = "none";
+
       }
-     
+      
+        document.querySelector(".textoModo").textContent = "Modo: busqueda de texto"
 
     })
 
@@ -136,14 +153,19 @@
         document.querySelector(".input_mensaje").disabled = false;
         document.querySelector(".input_mensaje").style.backgroundColor = "#fff"
 
+        iconoCerrarBusqueda.style.display = "table";
+
       }else{
          Mensaje1 = ""
          btnImagenGoogle.classList.remove('image_google_seleccionado');
          num2= 1;
          document.querySelector(".input_mensaje").disabled = true;
          document.querySelector(".input_mensaje").style.backgroundColor = "#d4d4d4"
+
+         iconoCerrarBusqueda.style.display = "none";
       }
       
+      document.querySelector(".textoModo").textContent = "Modo: busqueda de imagen"
     })
 
 
@@ -163,6 +185,8 @@
         document.querySelector(".input_mensaje").disabled = false;
         document.querySelector(".input_mensaje").style.backgroundColor = "#fff"
 
+        iconoCerrarBusqueda.style.display = "table";
+
         num3 = 0;
         
       }else{
@@ -172,8 +196,11 @@
         document.querySelector(".input_mensaje").style.backgroundColor = "#d4d4d4"
         num3 = 1;
 
+        iconoCerrarBusqueda.style.display = "none";
+
       }
       
+      document.querySelector(".textoModo").textContent = "Modo: busqueda de texto"
     })
 
     btnImagen_AI.addEventListener("click", () => {
@@ -194,6 +221,8 @@
         document.querySelector(".input_mensaje").style.backgroundColor = "#fff"
         num4 = 0;
 
+        iconoCerrarBusqueda.style.display = "table";
+
        }else{
 
         Mensaje1 = ""
@@ -202,11 +231,31 @@
         document.querySelector(".input_mensaje").style.backgroundColor = "#d4d4d4"
         num4 = 1;
 
+        iconoCerrarBusqueda.style.display = "none";
+
 
        }
-       
+      
+       document.querySelector(".textoModo").textContent = "Modo: busqueda de imagen"
     })
 
+
+  
+
+    iconoCerrarBusqueda.addEventListener("click", () => {
+
+      document.querySelector(".base_seleccion_motor").style.display   = "none";
+      document.querySelector(".base_cinta_informativa").style.display = "table";
+
+    })
+
+
+    contenedorCinta.addEventListener("click", () => {
+
+      contenedorCinta.style.display = "none";
+      document.querySelector(".base_seleccion_motor").style.display   = "table";
+
+    })
 
     //------------Fin eventos para el motor de busqueda-------------//
 
@@ -351,7 +400,7 @@
 
 
          // Volver a agregar el loading al final
-         if (mensaje.toLowerCase().startsWith("imagen:")) {
+         if (mensaje.toLowerCase().startsWith("imagenai:")) {
           if (loadingDiv) {
             chatWindow.appendChild(loadingDiv);
           }
@@ -494,6 +543,10 @@
                   etiquetaA2.href = data.resultado[1].enlace;
                   etiquetaA1.textContent = data.resultado[0].enlace;
                   etiquetaA2.textContent = data.resultado[1].enlace;
+
+                  etiquetaA1.setAttribute('target', 'blank');
+                  etiquetaA2.setAttribute('target', 'blank');
+
 
 
 

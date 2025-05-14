@@ -90,6 +90,18 @@ body {
     border: 1px solid #000;
 }
 
+.icono_cerrar_motor_busqueda {
+    position: absolute;
+    font-size: 13px;
+    top: 5px;
+    right: 9px;
+    background-color: #0101019e;
+    padding: 1px 6px 0px 6px;
+    color: #fff;
+    cursor: pointer;
+    display: none;
+}
+
 .btn_imagen_AI {
     background-color: #0f0f0f;
     border: 1px solid #000;
@@ -191,13 +203,38 @@ a {
 }
 
 .chat-container {
-  width: 400px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
+    width: 400px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+   
+}
+
+.base_cinta_informativa {
+    width: 100%;
+    display: none;
+    background-color: #000000;
+    padding: 6px 14px;
+    margin: auto;
+    cursor: pointer;
+}
+
+.texto_uso {
+    float: left;
+    font-size: 15px;
+    color: #fff;
+}
+
+.logo_google_informativo {
+    width: 60px;
+    margin: 0px 11px;
+    display: block;
+    float: left;
+    position: relative;
+    top: 1px;
 }
 
 .chat-window {
