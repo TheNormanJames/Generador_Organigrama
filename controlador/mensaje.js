@@ -15,7 +15,7 @@ const { OpenAI } = require('openai');
 
 //INCIALIZACION
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY //---llave key---//
+  apiKey: process.env.OPENA_API_KEY2 //---llave key---//
 });
 
 
@@ -61,14 +61,14 @@ const mensajeFront = async (req, resp) => {
   //contruccion del historial
   const message_history = historialesPorUsuario[usuarioId];
 
-
+  console.log(mensajeChat);
 
   // --- DETECTAR SI EL MENSAJE PIDE UNA IMAGEN ---
   try {
 
   
-    if ( mensajeChat.toLowerCase().startsWith("imagen:") ) {
-      const descripcion = mensajeChat.replace(/^imagen:|^dibuja:/i, "").trim();
+    if ( mensajeChat.toLowerCase().startsWith("imagenai:") ) {
+      const descripcion = mensajeChat.replace(/^imagenAI:/i, "").trim();
 
       //console.log("mensaje" + descripcion)
 
@@ -108,9 +108,19 @@ const mensajeFront = async (req, resp) => {
 
 
     //-----------fujo de texto OPEN AI-------------//
+    
+    if ( mensajeChat.toLowerCase().startsWith("textoai:") ) {
+
+        let descripcion = mensajeChat.replace(/^textoAI:/i, "").trim();
+    
+        //  Agregar a ese historial el primer mensaje
+        message_history.push({
+          role: "user",
+          content: descripcion
+        });
 
 
-    /*
+    
         // nos conectamos al modelo gpt-4o-mini
         const response = await openai.chat.completions.create({
           model: 'gpt-4o-mini', 
@@ -148,17 +158,16 @@ const mensajeFront = async (req, resp) => {
           historial: message_history
         });
 
-    
+  
 
-*/
-
+    }
 
 
 
     //-------------FLUJO NORMAL DE TEXTO GOOGLE------------//
-    if(mensajeChat.toLowerCase().startsWith("google:") ) {
+    if(mensajeChat.toLowerCase().startsWith("googletxt:") ) {
 
-          const tema = mensajeChat.replace(/^google:/i, "").trim();
+          const tema = mensajeChat.replace(/^googleTXT:/i, "").trim();
 
        
           const respuesta = await axios.get('https://www.googleapis.com/customsearch/v1', {
@@ -182,20 +191,16 @@ const mensajeFront = async (req, resp) => {
           console.log(resultados);
           
           return resp.status(200).json({
-              resultado: resultados
+              resultado: resultados,
+              tipo:"txtGoogle"
           })
     }
 
 
-
-
-
-
-
     //-----FLUJO PARA BUSCAR IMAGEN-----//
-    if(mensajeChat.toLowerCase().startsWith("google imagen:") ) {
+    if(mensajeChat.toLowerCase().startsWith("googleimage:") ) {
 
-          const tema = mensajeChat.replace(/^google imagen:/i, "").trim();
+          const tema = mensajeChat.replace(/^googleIMAGE:/i, "").trim();
 
           const respuesta = await axios.get('https://www.googleapis.com/customsearch/v1', {
             params: {
@@ -219,7 +224,8 @@ const mensajeFront = async (req, resp) => {
           console.log(resultados);
           
           return resp.status(200).json({
-              resultado: resultados
+              resultado: resultados,
+              tipo:"imagenGoogle"
           })
 
     }
