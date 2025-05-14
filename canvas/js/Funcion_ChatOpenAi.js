@@ -298,7 +298,7 @@
 
           const inicio = performance.now(); // Tiempo justo antes del fetch
 
-          const respuesta = await fetch('http://localhost:3000/chat', {
+          const respuesta = await fetch('https://back-gpt-pybo.onrender.com/chat', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
