@@ -4,10 +4,8 @@
 //--CARGAR LAS VARIALES DE ENTORNO--//
 require('dotenv').config();
 
-
 // taemos aixos
 const axios = require('axios');
-
 
 //IMPORTACION DE SDK para conectarse con OPEN AI
 const { OpenAI } = require('openai');
