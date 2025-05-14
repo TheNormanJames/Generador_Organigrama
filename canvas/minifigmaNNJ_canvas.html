@@ -137,9 +137,39 @@
         />
         <div class="chat-window" id="chatWindow">
           <div class="Mensaje user2">
-            <h2>Asistente EL TIEMPO</h2>
-            <p>¡Hola! ¿En qué puedo ayudarte hoy?</p>
+            <h2></h2>
+            <p></p>
           </div>
+
+          <div class="base_seleccion_motor">
+            <p class="espacio_txt">Seleccione el motor de busqueda:</p>
+            <div class="contenedor_motor_busqueda">
+              <img src="./img/icono_volver.jpg" class="icono_volver"/>
+              <img src="./img/google.png" class="logo_google"/>
+              <img src="./img/openai.png" class="logo_AI"/>
+            </div>
+
+              <!---seleccionar btns google-->
+            <div class="base_botones_google">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto  texto_google">Busco texto</button>
+              <button type="button" class="boton_imagen texto_imagen">Busco imagen</button>
+            </div>
+
+
+            <!---seleccionar btns google-->
+            <div class="base_botones_AI">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto  btn_txt_AI texto_AI">Busco texto</button>
+              <button type="button" class="boton_imagen btn_imagen_AI imagen_AI">Busco imagen</button>
+            </div>
+
+          </div>
+
+
+        
+
+
 
           <div class="base_contendor_loading">
             <img src="./img/loading_imagen.gif" class="loading_chat" />
@@ -152,6 +182,8 @@
             id="chatInput"
             placeholder="¿Que buscas?"
             autocomplete="off"
+            disabled
+            class="input_mensaje"
           />
           <button type="submit" class="boton_enviar">Enviar</button>
         </form>
