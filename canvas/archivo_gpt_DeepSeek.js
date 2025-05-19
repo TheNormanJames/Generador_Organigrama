@@ -26,6 +26,8 @@ class MiniFigma {
       historial: [],
       indiceHistorial: -1,
       offsets: new Map(),
+      mostrarLimiteExportacion: false,
+      anchoLimiteExportacion: 648,
     };
 
     this.initUIElements();
@@ -70,56 +72,6 @@ class MiniFigma {
     );
     document.body.appendChild(this.editorTexto);
 
-    // // Barra de alineación
-    // this.barraAlineacion = document.createElement("div");
-    // Object.assign(this.barraAlineacion.style, {
-    //   position: "absolute",
-    //   display: "none",
-    //   background: "#fff",
-    //   border: "1px solid #ccc",
-    //   borderRadius: "6px",
-    //   padding: "4px",
-    //   boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-    //   zIndex: "1001",
-    //   fontFamily: "sans-serif",
-    // });
-
-    // // Asegúrate de que la barra esté en el DOM ANTES de agregar botones
-    // document.body.appendChild(this.barraAlineacion);
-    // this.barraAlineacion.innerHTML = ""; // Limpia botones previos
-
-    // ["left", "center", "right", "justify"].forEach((alineacion) => {
-    //   const btn = document.createElement("button");
-    //   btn.textContent = alineacion[0].toUpperCase();
-    //   btn.title = alineacion;
-    //   Object.assign(btn.style, {
-    //     margin: "2px",
-    //     padding: "4px 6px",
-    //     fontSize: "14px",
-    //     cursor: "pointer",
-    //     border: "1px solid #ccc",
-    //     background: "#f9f9f9",
-    //     borderRadius: "4px",
-    //     pointerEvents: "auto", // Asegura que el botón reciba clicks
-    //   });
-
-    //   // Usa arrow function y stopPropagation
-    //   btn.onclick = () => alert("¡Funciona!"); // Prueba básica
-    //   btn.onclick = (e) => {
-    //     e.stopPropagation();
-    //     console.log("Botón clickeado:", alineacion); // Debug 1
-    //     if (this.state.objetoEditando) {
-    //       console.log("Objeto editando:", this.state.objetoEditando); // Debug 2
-    //       this.state.objetoEditando.alineacion = alineacion;
-    //       this.editorTexto.style.textAlign = alineacion;
-    //       this.dibujar();
-    //     } else {
-    //       console.log("No hay objeto editando"); // Debug 3
-    //     }
-    //   };
-
-    //   this.barraAlineacion.appendChild(btn);
-    // });
     // Popup para imágenes
     this.popup = document.createElement("div");
     this.popup.style.position = "absolute";
@@ -135,9 +87,6 @@ class MiniFigma {
 
     // Botones de la interfaz
     document.getElementById("circleBtn").onclick = () => this.crear("circulo");
-    // document.getElementById("circleTexto").onclick = () => this.crear("texto");
-    // document.getElementById("btnComponenteTexto").onclick = () =>
-    // this.crear("componenteTexto");
     document.getElementById("btnTituloSumario").onclick = () =>
       this.crear("tituloSumario");
     document.getElementById("btnTituloCargo").onclick = () =>
@@ -149,6 +98,10 @@ class MiniFigma {
     document.getElementById("btnExportar").onclick = () => this.exportarJSON();
     document.getElementById("btnImportar").onchange = (e) =>
       this.importarJSON(e);
+    document.getElementById("btnExportarImagen").onclick = () =>
+      this.exportarImagen();
+    document.getElementById("btnToggleLimite").onclick = () =>
+      this.toggleLimiteExportacion();
   }
 
   setupEventListeners() {
@@ -166,15 +119,34 @@ class MiniFigma {
     document.addEventListener("keyup", (e) => this.handleKeyUp(e));
   }
 
+  toggleLimiteExportacion() {
+    this.state.mostrarLimiteExportacion = !this.state.mostrarLimiteExportacion;
+    this.dibujar();
+  }
+
   // Métodos de dibujo y renderizado
   dibujar() {
     const { ctx, canvas, state } = this;
-    const { zoom, offsetCanvas } = state;
+    const {
+      zoom,
+      offsetCanvas,
+      mostrarLimiteExportacion,
+      anchoLimiteExportacion,
+    } = state;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y);
+
+    // Dibujar límite de exportación si está activo
+    if (mostrarLimiteExportacion) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2 / zoom; // Ajustar grosor según el zoom
+      ctx.setLineDash([5 / zoom, 5 / zoom]); // Ajustar patrón de guiones según el zoom
+      ctx.strokeRect(0, 0, anchoLimiteExportacion, canvas.height / zoom);
+      ctx.setLineDash([]);
+    }
 
     // Dibujar flechas primero para que queden detrás
     state.objetos
@@ -185,6 +157,133 @@ class MiniFigma {
     state.objetos
       .filter((obj) => !(obj instanceof Flecha))
       .forEach((obj) => obj.dibujar(ctx));
+  }
+
+  exportarImagen() {
+    const { anchoLimiteExportacion } = this.state;
+    const objetosDentroLimite = this.getObjetosDentroLimite();
+
+    // Crear un canvas temporal para la exportación
+    const canvasTemp = document.createElement("canvas");
+    const ctxTemp = canvasTemp.getContext("2d");
+
+    // Calcular dimensiones necesarias
+    const { minY, maxY } =
+      this.calcularDimensionesExportacion(objetosDentroLimite);
+    const altoExportacion = maxY - minY + 40; // +40 para margen
+
+    // Configurar canvas temporal
+    canvasTemp.width = anchoLimiteExportacion;
+    canvasTemp.height = altoExportacion;
+    ctxTemp.fillStyle = "white";
+    ctxTemp.fillRect(0, 0, canvasTemp.width, canvasTemp.height);
+
+    // Dibujar objetos en el canvas temporal (ajustando coordenadas)
+    objetosDentroLimite.forEach((obj) => {
+      ctxTemp.save();
+
+      // Ajustar posición para que todo quede dentro del canvas
+      if (
+        obj instanceof ComponenteTexto ||
+        obj instanceof ComponenteTituloSumario ||
+        obj instanceof ComponenteTituloCargo
+      ) {
+        // Para componentes complejos, mover todos sus hijos
+        obj.hijos.forEach((hijo) => {
+          const x = hijo.x;
+          const y = hijo.y - minY + 20; // Ajustar Y con margen
+          this.dibujarObjetoEnContexto(ctxTemp, hijo, x, y);
+        });
+      } else {
+        // Para objetos simples
+        const x = obj.x;
+        const y = obj.y - minY + 20; // Ajustar Y con margen
+        this.dibujarObjetoEnContexto(ctxTemp, obj, x, y);
+      }
+
+      ctxTemp.restore();
+    });
+
+    // Crear enlace de descarga
+    const enlace = document.createElement("a");
+    enlace.href = canvasTemp.toDataURL("image/png");
+    enlace.download = "diseño_exportado.png";
+    enlace.click();
+  }
+
+  // Métodos auxiliares para la exportación de imagen
+  getObjetosDentroLimite() {
+    const { anchoLimiteExportacion } = this.state;
+    return this.state.objetos.filter((obj) => {
+      if (obj instanceof Flecha) {
+        // Para flechas, verificar si ambos extremos están dentro del límite
+        const origenX = obj.origen.x + (obj.origen.radio || 0);
+        const destinoX = obj.destino.x - (obj.destino.radio || 0);
+        return (
+          origenX <= anchoLimiteExportacion &&
+          destinoX <= anchoLimiteExportacion
+        );
+      } else if (
+        obj instanceof ComponenteTexto ||
+        obj instanceof ComponenteTituloSumario ||
+        obj instanceof ComponenteTituloCargo
+      ) {
+        // Para componentes, verificar si su ancho está dentro del límite
+        return obj.x + obj.ancho <= anchoLimiteExportacion;
+      } else if (obj instanceof Circulo) {
+        return obj.x + obj.radio <= anchoLimiteExportacion;
+      } else if (obj instanceof Texto) {
+        return obj.x + obj.ancho <= anchoLimiteExportacion;
+      }
+      return true;
+    });
+  }
+
+  calcularDimensionesExportacion(objetos) {
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    objetos.forEach((obj) => {
+      if (
+        obj instanceof ComponenteTexto ||
+        obj instanceof ComponenteTituloSumario ||
+        obj instanceof ComponenteTituloCargo
+      ) {
+        // Para componentes, verificar todos sus hijos
+        obj.hijos.forEach((hijo) => {
+          minY = Math.min(minY, hijo.y - hijo.fontSize);
+          maxY = Math.max(maxY, hijo.y + hijo.fontSize);
+        });
+      } else if (obj instanceof Circulo) {
+        minY = Math.min(minY, obj.y - obj.radio);
+        maxY = Math.max(maxY, obj.y + obj.radio);
+      } else if (obj instanceof Texto) {
+        minY = Math.min(minY, obj.y - obj.fontSize);
+        maxY = Math.max(
+          maxY,
+          obj.y + obj.fontSize * (obj.texto.split("\n").length || 1)
+        );
+      }
+    });
+
+    return { minY: Math.max(0, minY - 20), maxY: maxY + 20 }; // Agregar márgenes
+  }
+
+  dibujarObjetoEnContexto(ctx, obj, x, y) {
+    // Guardar posición original
+    const originalX = obj.x;
+    const originalY = obj.y;
+
+    // Asignar posición temporal para el dibujo
+    obj.x = x;
+    obj.y = y;
+
+    // Dibujar el objeto
+    obj.dibujar(ctx);
+
+    // Restaurar posición original
+    obj.x = originalX;
+    obj.y = originalY;
   }
 
   // Métodos de creación de objetos
@@ -486,10 +585,6 @@ class MiniFigma {
     this.editorTexto.style.display = "block";
     this.editorTexto.style.textAlign = textoObj.alineacion || "left";
 
-    // this.barraAlineacion.style.left = pantallaX + "px";
-    // this.barraAlineacion.style.top = pantallaY - 40 + "px";
-    // this.barraAlineacion.style.display = "flex";
-
     this.editorTexto.focus();
     this.autosizeTextarea(this.editorTexto);
     this.state.objetoEditando = textoObj;
@@ -497,7 +592,6 @@ class MiniFigma {
     this.editorTexto.onblur = () => {
       textoObj.texto = this.editorTexto.value;
       this.editorTexto.style.display = "none";
-      // ELIMINAR: this.barraAlineacion.style.display = "none";
       this.state.objetoEditando = null;
       this.dibujar();
     };
