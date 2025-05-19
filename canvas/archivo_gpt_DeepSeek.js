@@ -70,43 +70,56 @@ class MiniFigma {
     );
     document.body.appendChild(this.editorTexto);
 
-    // Barra de alineación
-    this.barraAlineacion = document.createElement("div");
-    Object.assign(this.barraAlineacion.style, {
-      position: "absolute",
-      display: "none",
-      background: "#fff",
-      border: "1px solid #ccc",
-      borderRadius: "6px",
-      padding: "4px",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-      zIndex: "1001",
-      fontFamily: "sans-serif",
-    });
+    // // Barra de alineación
+    // this.barraAlineacion = document.createElement("div");
+    // Object.assign(this.barraAlineacion.style, {
+    //   position: "absolute",
+    //   display: "none",
+    //   background: "#fff",
+    //   border: "1px solid #ccc",
+    //   borderRadius: "6px",
+    //   padding: "4px",
+    //   boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+    //   zIndex: "1001",
+    //   fontFamily: "sans-serif",
+    // });
 
-    ["left", "center", "right", "justify"].forEach((alineacion) => {
-      const btn = document.createElement("button");
-      btn.textContent = alineacion[0].toUpperCase();
-      btn.title = alineacion;
-      Object.assign(btn.style, {
-        margin: "2px",
-        padding: "4px 6px",
-        fontSize: "14px",
-        cursor: "pointer",
-        border: "1px solid #ccc",
-        background: "#f9f9f9",
-        borderRadius: "4px",
-      });
-      btn.onclick = () => {
-        if (this.state.objetoEditando) {
-          this.state.objetoEditando.alineacion = alineacion;
-          this.editorTexto.style.textAlign = alineacion;
-        }
-      };
-      this.barraAlineacion.appendChild(btn);
-    });
-    document.body.appendChild(this.barraAlineacion);
+    // // Asegúrate de que la barra esté en el DOM ANTES de agregar botones
+    // document.body.appendChild(this.barraAlineacion);
+    // this.barraAlineacion.innerHTML = ""; // Limpia botones previos
 
+    // ["left", "center", "right", "justify"].forEach((alineacion) => {
+    //   const btn = document.createElement("button");
+    //   btn.textContent = alineacion[0].toUpperCase();
+    //   btn.title = alineacion;
+    //   Object.assign(btn.style, {
+    //     margin: "2px",
+    //     padding: "4px 6px",
+    //     fontSize: "14px",
+    //     cursor: "pointer",
+    //     border: "1px solid #ccc",
+    //     background: "#f9f9f9",
+    //     borderRadius: "4px",
+    //     pointerEvents: "auto", // Asegura que el botón reciba clicks
+    //   });
+
+    //   // Usa arrow function y stopPropagation
+    //   btn.onclick = () => alert("¡Funciona!"); // Prueba básica
+    //   btn.onclick = (e) => {
+    //     e.stopPropagation();
+    //     console.log("Botón clickeado:", alineacion); // Debug 1
+    //     if (this.state.objetoEditando) {
+    //       console.log("Objeto editando:", this.state.objetoEditando); // Debug 2
+    //       this.state.objetoEditando.alineacion = alineacion;
+    //       this.editorTexto.style.textAlign = alineacion;
+    //       this.dibujar();
+    //     } else {
+    //       console.log("No hay objeto editando"); // Debug 3
+    //     }
+    //   };
+
+    //   this.barraAlineacion.appendChild(btn);
+    // });
     // Popup para imágenes
     this.popup = document.createElement("div");
     this.popup.style.position = "absolute";
@@ -473,17 +486,18 @@ class MiniFigma {
     this.editorTexto.style.display = "block";
     this.editorTexto.style.textAlign = textoObj.alineacion || "left";
 
-    this.barraAlineacion.style.left = pantallaX + "px";
-    this.barraAlineacion.style.top = pantallaY - 40 + "px";
-    this.barraAlineacion.style.display = "flex";
+    // this.barraAlineacion.style.left = pantallaX + "px";
+    // this.barraAlineacion.style.top = pantallaY - 40 + "px";
+    // this.barraAlineacion.style.display = "flex";
 
     this.editorTexto.focus();
     this.autosizeTextarea(this.editorTexto);
+    this.state.objetoEditando = textoObj;
 
     this.editorTexto.onblur = () => {
       textoObj.texto = this.editorTexto.value;
       this.editorTexto.style.display = "none";
-      this.barraAlineacion.style.display = "none";
+      // ELIMINAR: this.barraAlineacion.style.display = "none";
       this.state.objetoEditando = null;
       this.dibujar();
     };
