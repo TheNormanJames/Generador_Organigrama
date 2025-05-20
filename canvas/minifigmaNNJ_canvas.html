@@ -95,14 +95,55 @@
     <!----CHAT OPEN AI CARLOS---->
     <div class="contenedor_principal_chat">
       <div class="chat-container">
+        <div class="base_cinta_informativa">
+          <p class="texto_uso">Estas usando</p>
+          <img src="./img/google.png" class="logo_google_informativo" />
+          <p class="texto_uso textoModo"></p>
+        </div>
+
         <img
           src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_cerrar.png"
           class="icono_cerrar"
         />
         <div class="chat-window" id="chatWindow">
           <div class="Mensaje user2">
-            <h2>Asistente EL TIEMPO</h2>
-            <p>¡Hola! ¿En qué puedo ayudarte hoy?</p>
+            <h2></h2>
+            <p></p>
+          </div>
+
+          <div class="base_seleccion_motor">
+            <p class="icono_cerrar_motor_busqueda">X</p>
+            <p class="espacio_txt">Seleccione el motor de busqueda:</p>
+            <div class="contenedor_motor_busqueda">
+              <img src="./img/icono_volver.jpg" class="icono_volver" />
+              <img src="./img/google.png" class="logo_google" />
+              <img src="./img/openai.png" class="logo_AI" />
+            </div>
+
+            <!---seleccionar btns google-->
+            <div class="base_botones_google">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto texto_google">
+                Busco texto
+              </button>
+              <button type="button" class="boton_imagen texto_imagen">
+                Busco imagen
+              </button>
+            </div>
+
+            <!---seleccionar btns google-->
+            <div class="base_botones_AI">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto btn_txt_AI texto_AI">
+                Busco texto
+              </button>
+              <button
+                type="button"
+                class="boton_imagen btn_imagen_AI imagen_AI"
+              >
+                Busco imagen
+              </button>
+            </div>
           </div>
 
           <div class="base_contendor_loading">
@@ -116,6 +157,8 @@
             id="chatInput"
             placeholder="¿Que buscas?"
             autocomplete="off"
+            disabled
+            class="input_mensaje"
           />
           <button type="submit" class="boton_enviar">Enviar</button>
         </form>
@@ -149,5 +192,4 @@
 
   <!--funcion Open AI-->
   <script type="text/javascript" src="./js/Funcion_ChatOpenAi.js"></script>
-  <!-- <script type="text/javascript" src="./archivo_gpt.js"></script> -->
 </html>
