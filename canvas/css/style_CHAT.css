@@ -14,6 +14,175 @@ body {
   display: table;
 }
 
+.contenedor_motor_busqueda {
+    width: auto;
+    display: table;
+    margin: auto;
+}
+
+.base_botones_google {
+    width: auto;
+    display: none;
+    margin: 12px auto 0px auto;
+}
+
+
+
+
+.icono_volver {
+    width: 26px;
+    float: left;
+    margin-right: 14px;
+    position: relative;
+    top: -1px;
+    cursor: pointer;
+    display: none;
+}
+
+.base_seleccion_motor {
+    width: 361px;
+    display: block;
+    padding: 14px 22px 15px 22px;
+    position: fixed;
+    z-index: 5;
+    background-color: #ffffff;
+    border: 1px solid #b5b5b5;
+}
+
+.base_botones_AI{
+  
+    width: auto;
+    display: none;
+    margin: 12px auto 0px auto;
+
+}
+
+.boton_texto {
+    padding: 0px 10px;
+    background-color: #ea4739;
+    font-family: "jali-latin-variable";
+    color: #fff;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid #ea4739;
+}
+
+.espacio_txt {
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.boton_imagen {
+    padding: 0px 10px;
+    background-color: #4386f4;
+    font-family: "jali-latin-variable";
+    color: #fff;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 15px;
+    border: 1px solid #4386f4;
+}
+
+.btn_txt_AI {
+    background-color: #0f0f0f;
+    border: 1px solid #000;
+}
+
+.icono_cerrar_motor_busqueda {
+    position: absolute;
+    font-size: 13px;
+    top: 5px;
+    right: 9px;
+    background-color: #0101019e;
+    padding: 1px 6px 0px 6px;
+    color: #fff;
+    cursor: pointer;
+    display: none;
+}
+
+.btn_imagen_AI {
+    background-color: #0f0f0f;
+    border: 1px solid #000;
+}
+
+
+.logo_google {
+    width: 90px;
+    float: left;
+    cursor: pointer;
+    margin-right: 22px;
+}
+
+.linea_divisora {
+    width: 88%;
+    height: 1px;
+    background-color: #0a0b12;
+    border: none;
+    margin: 20px auto;
+}
+
+.tituloRespusta {
+    padding: 0px 20px;
+    color: #000000b8;
+    font-weight: 600;
+}
+
+
+.btn_open_AI_seleccionado{
+      background-color: #ffffff;
+    color: #000;
+    border: 1px solid #000;
+}
+
+.nueva_busqueda{
+    position: fixed;
+    width: 361px;
+    display: table;
+    background-color: #ffffff;
+    z-index: 2;
+    padding: 11px 0px 15px 0px;
+ 
+    border-bottom: 1px solid #000000;
+}
+
+
+
+.txt_google_seleccionado{
+
+    color: #ea4739;
+    background-color: #fff;
+    border: 1px solid #ea4739;
+
+}
+
+
+.image_google_seleccionado{
+
+    color: #4386f4;
+    background-color: #fff;
+    border: 1px solid #4386f4;
+
+}
+
+
+a {
+    width: 307px;
+    overflow: hidden;
+    display: block;
+    margin: auto;
+    color: #1a73e8 !important;
+    font-size: 16px;
+}
+
+.logo_AI{
+
+    width: 100px;
+    float: left;
+    cursor:pointer;
+}
+
 .boton_descarga {
   width: auto;
   float: right;
@@ -34,13 +203,38 @@ body {
 }
 
 .chat-container {
-  width: 400px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
+    width: 400px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+   
+}
+
+.base_cinta_informativa {
+    width: 100%;
+    display: none;
+    background-color: #000000;
+    padding: 6px 14px;
+    margin: auto;
+    cursor: pointer;
+}
+
+.texto_uso {
+    float: left;
+    font-size: 15px;
+    color: #fff;
+}
+
+.logo_google_informativo {
+    width: 60px;
+    margin: 0px 11px;
+    display: block;
+    float: left;
+    position: relative;
+    top: 1px;
 }
 
 .chat-window {
@@ -60,11 +254,11 @@ body {
 }
 
 .Mensaje.user {
-  width: 100%;
-  display: table;
-  margin-bottom: 19px;
-  text-align: right;
-  float: right;
+    width: 100%;
+    display: table;
+    margin-bottom: 35px;
+    text-align: right;
+    float: right;
 }
 
 .Mensaje.user h2 {
@@ -107,6 +301,7 @@ input[type="text"] {
   padding: 10px;
   border: none;
   font-size: 16px;
+  background-color: #d4d4d4;
 }
 
 .boton_enviar {

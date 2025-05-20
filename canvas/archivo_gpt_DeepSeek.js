@@ -184,7 +184,7 @@ class MiniFigma {
 
       // Ajustar posición para que todo quede dentro del canvas
       if (
-        obj instanceof ComponenteTexto ||
+        // obj instanceof ComponenteTexto ||
         obj instanceof ComponenteTituloSumario ||
         obj instanceof ComponenteTituloCargo
       ) {
@@ -224,7 +224,7 @@ class MiniFigma {
           destinoX <= anchoLimiteExportacion
         );
       } else if (
-        obj instanceof ComponenteTexto ||
+        // obj instanceof ComponenteTexto ||
         obj instanceof ComponenteTituloSumario ||
         obj instanceof ComponenteTituloCargo
       ) {
@@ -245,7 +245,7 @@ class MiniFigma {
 
     objetos.forEach((obj) => {
       if (
-        obj instanceof ComponenteTexto ||
+        // obj instanceof ComponenteTexto ||
         obj instanceof ComponenteTituloSumario ||
         obj instanceof ComponenteTituloCargo
       ) {
@@ -365,11 +365,11 @@ class MiniFigma {
         }
 
         // Para ComponenteTexto, guardar offset del punto de click
-        if (obj instanceof ComponenteTexto) {
+        /* if (obj instanceof ComponenteTexto) {
           state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
         } else {
-          state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
-        }
+          } */
+        state.offsets.set(obj, { dx: x - obj.x, dy: y - obj.y });
       }
     }
 
@@ -447,7 +447,7 @@ class MiniFigma {
         const o = state.offsets.get(obj);
         if (o) {
           if (
-            obj instanceof ComponenteTexto ||
+            // obj instanceof ComponenteTexto ||
             obj instanceof ComponenteTituloSumario ||
             obj instanceof ComponenteTituloCargo
           ) {
@@ -501,8 +501,8 @@ class MiniFigma {
         return;
       }
       if (
-        (obj instanceof ComponenteTexto ||
-          obj instanceof ComponenteTituloSumario ||
+        // obj instanceof ComponenteTexto ||
+        (obj instanceof ComponenteTituloSumario ||
           obj instanceof ComponenteTituloCargo) &&
         obj.contienePunto(x, y)
       ) {
@@ -1138,75 +1138,75 @@ class Circulo {
 }
 
 // Añadir nueva clase ComponenteTexto
-class ComponenteTexto {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.hijos = [
-      new Texto(x, y, "Título", 36, "#111111", 400, "center"),
-      new Texto(x, y + 40, "Sumario", 24, "#333333", 400, "left"),
-      new Texto(x, y + 80, "Texto principal", 18, "#444444", 400, "justify"),
-      new Texto(x, y + 180, "Nombre del autor", 20, "#000000", 300, "left"),
-      new Texto(x, y + 210, "Cargo del autor", 16, "#666666", 300, "left"),
-      new Texto(x + 200, y + 210, "2025", 16, "#999999", 100, "right"),
-    ];
-    this.seleccionado = false;
-    this.ancho = 400;
+// class ComponenteTexto {
+//   constructor(x, y) {
+//     this.x = x;
+//     this.y = y;
+//     this.hijos = [
+//       new Texto(x, y, "Título", 36, "#111111", 400, "center"),
+//       new Texto(x, y + 40, "Sumario", 24, "#333333", 400, "left"),
+//       new Texto(x, y + 80, "Texto principal", 18, "#444444", 400, "justify"),
+//       new Texto(x, y + 180, "Nombre del autor", 20, "#000000", 300, "left"),
+//       new Texto(x, y + 210, "Cargo del autor", 16, "#666666", 300, "left"),
+//       new Texto(x + 200, y + 210, "2025", 16, "#999999", 100, "right"),
+//     ];
+//     this.seleccionado = false;
+//     this.ancho = 400;
 
-    // Asignar IDs temporales a los hijos
-    this.hijos.forEach((hijo) => {
-      hijo.tempId = this.generarIdUnico();
-    });
-  }
+//     // Asignar IDs temporales a los hijos
+//     this.hijos.forEach((hijo) => {
+//       hijo.tempId = this.generarIdUnico();
+//     });
+//   }
 
-  generarIdUnico() {
-    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-  }
-  dibujar(ctx) {
-    // Dibujar todos los hijos
-    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+//   generarIdUnico() {
+//     return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+//   }
+//   dibujar(ctx) {
+//     // Dibujar todos los hijos
+//     this.hijos.forEach((hijo) => hijo.dibujar(ctx));
 
-    // Dibujar borde de selección
-    if (this.seleccionado) {
-      const altoTotal = this.calcularAltoTotal();
-      ctx.strokeStyle = "#00000088";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - 10, this.y - 30, this.ancho + 20, altoTotal + 50);
-    }
-  }
+//     // Dibujar borde de selección
+//     if (this.seleccionado) {
+//       const altoTotal = this.calcularAltoTotal();
+//       ctx.strokeStyle = "#00000088";
+//       ctx.lineWidth = 2;
+//       ctx.strokeRect(this.x - 10, this.y - 30, this.ancho + 20, altoTotal + 50);
+//     }
+//   }
 
-  calcularAltoTotal() {
-    // Calcular el alto total basado en la posición del último elemento
-    const ultimoHijo = this.hijos[this.hijos.length - 1];
-    return ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
-  }
+//   calcularAltoTotal() {
+//     // Calcular el alto total basado en la posición del último elemento
+//     const ultimoHijo = this.hijos[this.hijos.length - 1];
+//     return ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
+//   }
 
-  contienePunto(x, y) {
-    const altoTotal = this.calcularAltoTotal();
-    return (
-      x > this.x - 10 &&
-      x < this.x + this.ancho + 10 &&
-      y > this.y - 30 &&
-      y < this.y + altoTotal + 20
-    );
-  }
+//   contienePunto(x, y) {
+//     const altoTotal = this.calcularAltoTotal();
+//     return (
+//       x > this.x - 10 &&
+//       x < this.x + this.ancho + 10 &&
+//       y > this.y - 30 &&
+//       y < this.y + altoTotal + 20
+//     );
+//   }
 
-  mover(dx, dy) {
-    this.x += dx;
-    this.y += dy;
-    this.hijos.forEach((h) => {
-      h.x += dx;
-      h.y += dy;
-    });
-  }
+//   mover(dx, dy) {
+//     this.x += dx;
+//     this.y += dy;
+//     this.hijos.forEach((h) => {
+//       h.x += dx;
+//       h.y += dy;
+//     });
+//   }
 
-  // Método para editar un texto específico del componente
-  editarTexto(indice, nuevoTexto) {
-    if (indice >= 0 && indice < this.hijos.length) {
-      this.hijos[indice].texto = nuevoTexto;
-    }
-  }
-}
+//   // Método para editar un texto específico del componente
+//   editarTexto(indice, nuevoTexto) {
+//     if (indice >= 0 && indice < this.hijos.length) {
+//       this.hijos[indice].texto = nuevoTexto;
+//     }
+//   }
+// }
 // Nuevas clases para los componentes
 class ComponenteTituloSumario {
   constructor(x, y) {
