@@ -335,6 +335,7 @@ class MiniFigma {
     state.arrastrando = true;
     state.textoRedimensionando = null;
     state.circuloRedimensionando = null;
+    state.componenteRedimensionando = null; // Asegurarnos que empieza limpio
 
     // Verificar handlers de redimensionamiento
     for (const obj of state.objetos) {
@@ -342,9 +343,13 @@ class MiniFigma {
         state.circuloRedimensionando = obj;
         return;
       }
-      if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
-        state.textoRedimensionando = obj;
-        return;
+      if (
+        (obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo) &&
+        this.estaSobreHandlerRedimension(x, y, obj)
+      ) {
+        state.componenteRedimensionando = obj;
+        return; // Si estamos redimensionando, no hacemos más comprobaciones
       }
     }
 
@@ -399,6 +404,22 @@ class MiniFigma {
     this.dibujar();
   }
 
+  estaSobreHandlerComponente(x, y, componente) {
+    return (
+      x > componente.x + componente.ancho - 10 &&
+      x < componente.x + componente.ancho + 10 &&
+      y > componente.y - 10 &&
+      y < componente.y + this.calcularAltoComponente(componente) + 10
+    );
+  }
+  calcularAltoComponente(componente) {
+    const ultimoHijo = componente.hijos[componente.hijos.length - 1];
+    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    return (
+      ultimoHijo.y - componente.y + (ultimoHijo.fontSize + 4) * lineas + 20
+    );
+  }
+
   handleMouseMove(e) {
     const { offsetX, offsetY } = e;
     const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
@@ -423,11 +444,15 @@ class MiniFigma {
       return;
     }
 
-    if (state.arrastrando && state.textoRedimensionando) {
-      const nuevoAncho = Math.max(30, x - state.textoRedimensionando.x);
-      state.textoRedimensionando.ancho = nuevoAncho;
+    // Redimensionamiento de componentes (debe estar antes del movimiento normal)
+    if (state.arrastrando && state.componenteRedimensionando) {
+      const nuevoAncho = Math.max(100, x - state.componenteRedimensionando.x);
+      state.componenteRedimensionando.ancho = nuevoAncho;
+      state.componenteRedimensionando.hijos.forEach((hijo) => {
+        hijo.ancho = nuevoAncho;
+      });
       this.dibujar();
-      return;
+      return; // Salir para no procesar movimiento normal
     }
 
     // Desplazamiento del canvas
@@ -474,12 +499,15 @@ class MiniFigma {
     const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
     const state = this.state;
 
+    // Limpiar todos los estados de redimensionamiento
     state.circuloRedimensionando = null;
+    state.textoRedimensionando = null;
+    state.componenteRedimensionando = null; // ¡Esto es lo que faltaba!
     state.arrastrando = false;
     state.desplazandoCanvas = false;
+
     state.objetosSeleccionados.forEach((obj) => (obj.seleccionado = false));
     state.offsets.clear();
-    state.textoRedimensionando = null;
 
     this.actualizarCursor(x, y);
     this.dibujar();
@@ -1015,6 +1043,18 @@ class MiniFigma {
   actualizarCursor(x, y) {
     const state = this.state;
 
+    // Primero verificar si estamos sobre un handler de redimensionamiento
+    for (const obj of state.objetos) {
+      if (
+        (obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo) &&
+        this.estaSobreHandlerRedimension(x, y, obj)
+      ) {
+        this.canvas.style.cursor = "col-resize";
+        return;
+      }
+    }
+
     if (state.textoRedimensionando) {
       this.canvas.style.cursor = "ew-resize";
       return;
@@ -1055,6 +1095,21 @@ class MiniFigma {
   autosizeTextarea(textarea) {
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
+  }
+
+  estaSobreHandlerRedimension(x, y, componente) {
+    const margen = 10;
+    return (
+      x >= componente.x + componente.ancho - margen &&
+      x <= componente.x + componente.ancho + margen &&
+      y >= componente.y - margen &&
+      y <= componente.y + this.calcularAltoComponente(componente) + margen
+    );
+  }
+  calcularAltoComponente(componente) {
+    const ultimoHijo = componente.hijos[componente.hijos.length - 1];
+    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    return ultimoHijo.y - componente.y + (ultimoHijo.fontSize + 4) * lineas;
   }
 }
 
