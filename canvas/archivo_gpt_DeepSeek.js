@@ -109,7 +109,7 @@ class MiniFigma {
   }
 
   aplicarFormatoTextoSeleccionado(tipo) {
-    if (!this.state.objetoEditando) return;
+    if (!this.state.objetoEditando || !this.editorTexto) return;
 
     const textarea = this.editorTexto;
     const inicio = textarea.selectionStart;
@@ -117,11 +117,22 @@ class MiniFigma {
 
     if (inicio === fin) return; // No hay texto seleccionado
 
-    // Aplicar formato al objeto en edición
-    this.state.objetoEditando.aplicarFormato(inicio, fin, tipo);
+    // Obtener el texto antes de la selección para calcular saltos de línea
+    const textoAntes = textarea.value.substring(0, inicio);
+    const lineasAntes = textoAntes.split("\n");
+    const lineaActual = lineasAntes.length - 1;
 
-    // Forzar redibujado
-    this.dibujar();
+    // Obtener el texto seleccionado
+    const textoSeleccionado = textarea.value.substring(inicio, fin);
+    const lineasSeleccionadas = textoSeleccionado.split("\n");
+
+    // Solo aplicar formato si la selección está en una sola línea
+    if (lineasSeleccionadas.length === 1) {
+      this.state.objetoEditando.aplicarFormato(inicio, fin, tipo);
+      this.dibujar();
+    } else {
+      alert("Solo puedes formatear texto dentro de una misma línea");
+    }
   }
   actualizarEstilosEditor() {
     const textoObj = this.state.objetoEditando;
@@ -238,16 +249,28 @@ class MiniFigma {
   // Métodos de dibujo y renderizado
   dibujar() {
     const { ctx, canvas, state } = this;
+    const {
+      zoom,
+      offsetCanvas,
+      mostrarLimiteExportacion,
+      anchoLimiteExportacion,
+    } = state;
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(
-      state.zoom,
-      0,
-      0,
-      state.zoom,
-      state.offsetCanvas.x,
-      state.offsetCanvas.y
-    );
+
+    ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y);
+
+    // Dibujar límite de exportación si está activo (corregido)
+    if (mostrarLimiteExportacion) {
+      ctx.save();
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([5 / zoom, 5 / zoom]);
+      ctx.strokeRect(0, 0, anchoLimiteExportacion, canvas.height / zoom);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Dibujar flechas primero
     state.objetos
@@ -273,13 +296,14 @@ class MiniFigma {
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d");
 
-    // Calcular dimensiones necesarias
-    const { minY, maxY } =
+    // Calcular dimensiones necesarias (corregido)
+    const { minX, minY, maxX, maxY } =
       this.calcularDimensionesExportacion(objetosDentroLimite);
+    const anchoExportacion = anchoLimiteExportacion;
     const altoExportacion = maxY - minY + 40; // +40 para margen
 
     // Configurar canvas temporal
-    canvasTemp.width = anchoLimiteExportacion;
+    canvasTemp.width = anchoExportacion;
     canvasTemp.height = altoExportacion;
     ctxTemp.fillStyle = "white";
     ctxTemp.fillRect(0, 0, canvasTemp.width, canvasTemp.height);
@@ -290,19 +314,16 @@ class MiniFigma {
 
       // Ajustar posición para que todo quede dentro del canvas
       if (
-        // obj instanceof ComponenteTexto ||
         obj instanceof ComponenteTituloSumario ||
         obj instanceof ComponenteTituloCargo
       ) {
-        // Para componentes complejos, mover todos sus hijos
         obj.hijos.forEach((hijo) => {
-          const x = hijo.x;
+          const x = hijo.x - minX + 20; // Ajustar X con margen
           const y = hijo.y - minY + 20; // Ajustar Y con margen
           this.dibujarObjetoEnContexto(ctxTemp, hijo, x, y);
         });
       } else {
-        // Para objetos simples
-        const x = obj.x;
+        const x = obj.x - minX + 20; // Ajustar X con margen
         const y = obj.y - minY + 20; // Ajustar Y con margen
         this.dibujarObjetoEnContexto(ctxTemp, obj, x, y);
       }
@@ -346,33 +367,41 @@ class MiniFigma {
   }
 
   calcularDimensionesExportacion(objetos) {
+    let minX = Infinity;
     let minY = Infinity;
+    let maxX = -Infinity;
     let maxY = -Infinity;
 
     objetos.forEach((obj) => {
       if (
-        // obj instanceof ComponenteTexto ||
         obj instanceof ComponenteTituloSumario ||
         obj instanceof ComponenteTituloCargo
       ) {
-        // Para componentes, verificar todos sus hijos
         obj.hijos.forEach((hijo) => {
+          minX = Math.min(minX, hijo.x);
           minY = Math.min(minY, hijo.y - hijo.fontSize);
+          maxX = Math.max(maxX, hijo.x + hijo.ancho);
           maxY = Math.max(maxY, hijo.y + hijo.fontSize);
         });
       } else if (obj instanceof Circulo) {
+        minX = Math.min(minX, obj.x - obj.radio);
         minY = Math.min(minY, obj.y - obj.radio);
+        maxX = Math.max(maxX, obj.x + obj.radio);
         maxY = Math.max(maxY, obj.y + obj.radio);
       } else if (obj instanceof Texto) {
+        minX = Math.min(minX, obj.x);
         minY = Math.min(minY, obj.y - obj.fontSize);
-        maxY = Math.max(
-          maxY,
-          obj.y + obj.fontSize * (obj.texto.split("\n").length || 1)
-        );
+        maxX = Math.max(maxX, obj.x + obj.ancho);
+        maxY = Math.max(maxY, obj.y + obj.fontSize);
       }
     });
 
-    return { minY: Math.max(0, minY - 20), maxY: maxY + 20 }; // Agregar márgenes
+    return {
+      minX: Math.max(0, minX - 20),
+      minY: Math.max(0, minY - 20),
+      maxX: maxX + 20,
+      maxY: maxY + 20,
+    };
   }
 
   dibujarObjetoEnContexto(ctx, obj, x, y) {
@@ -1598,20 +1627,48 @@ class Texto {
   }
 
   aplicarFormato(inicio, fin, tipo) {
-    // Eliminar formatos solapados
+    // Normalizar posiciones (asegurarse que inicio <= fin)
+    const start = Math.min(inicio, fin);
+    const end = Math.max(inicio, fin);
+
+    // Eliminar formatos solapados en el rango exacto
     this.formatos = this.formatos.filter(
-      (f) => !(f.inicio <= fin && f.fin >= inicio)
+      (f) => !(f.inicio >= start && f.fin <= end)
     );
 
-    // Agregar nuevo formato
+    // Agregar nuevo formato solo al rango seleccionado
     this.formatos.push({
-      inicio: Math.max(0, inicio),
-      fin: Math.min(this.texto.length, fin),
+      inicio: Math.max(0, start),
+      fin: Math.min(this.texto.length, end),
       tipo: tipo,
     });
 
     // Ordenar formatos por posición
     this.formatos.sort((a, b) => a.inicio - b.inicio);
+
+    // Fusionar formatos adyacentes del mismo tipo
+    this.fusionarFormatosSimilares();
+  }
+  fusionarFormatosSimilares() {
+    if (this.formatos.length < 2) return;
+
+    const nuevosFormatos = [];
+    let current = this.formatos[0];
+
+    for (let i = 1; i < this.formatos.length; i++) {
+      const next = this.formatos[i];
+
+      if (current.tipo === next.tipo && current.fin >= next.inicio) {
+        // Fusionar formatos contiguos o solapados del mismo tipo
+        current.fin = Math.max(current.fin, next.fin);
+      } else {
+        nuevosFormatos.push(current);
+        current = next;
+      }
+    }
+
+    nuevosFormatos.push(current);
+    this.formatos = nuevosFormatos;
   }
 
   dividirTextoEnLineas(ctx) {
@@ -1664,68 +1721,76 @@ class Texto {
     const lineas = this.dividirTextoEnLineas(ctx);
     let currentY = this.y;
 
-    lineas.forEach((linea) => {
+    // Calcular posiciones absolutas de cada línea
+    let posicionAbsoluta = 0;
+    const posicionesLineas = [];
+    let textoRestante = this.texto;
+
+    for (const linea of lineas) {
+      posicionesLineas.push({
+        inicio: posicionAbsoluta,
+        fin: posicionAbsoluta + linea.length,
+        texto: linea,
+      });
+      posicionAbsoluta += linea.length + 1; // +1 por el salto de línea
+    }
+
+    // Dibujar cada línea con sus formatos
+    posicionesLineas.forEach((lineaObj) => {
       let currentX = this.x;
       if (this.alineacion === "center") currentX = this.x + this.ancho / 2;
       if (this.alineacion === "right") currentX = this.x + this.ancho;
 
       let currentPos = 0;
-      let lastPos = 0;
+      const linea = lineaObj.texto;
 
-      // Dibujar texto con formatos aplicados
       while (currentPos < linea.length) {
-        // Encontrar el próximo formato que aplica
-        const formato = this.formatos.find(
-          (f) => f.inicio <= currentPos && f.fin > currentPos
+        // Calcular posición absoluta en el texto completo
+        const posAbsoluta = lineaObj.inicio + currentPos;
+
+        // Encontrar formatos que aplican a esta posición
+        const formatosAplicables = this.formatos.filter(
+          (f) => posAbsoluta >= f.inicio && posAbsoluta < f.fin
         );
 
-        if (formato) {
-          // Dibujar texto sin formato hasta el inicio del formato
-          if (currentPos < formato.inicio) {
-            const segmento = linea.substring(currentPos, formato.inicio);
-            ctx.font = `${this.fontSize}px Arial`;
-            ctx.fillText(segmento, currentX, currentY);
-            currentX += ctx.measureText(segmento).width;
-            currentPos = formato.inicio;
-          }
-
-          // Dibujar texto con formato
-          const endPos = Math.min(formato.fin, linea.length);
-          const segmento = linea.substring(currentPos, endPos);
-
-          // Aplicar estilo según el tipo
-          if (formato.tipo === "bold") {
-            ctx.font = `bold ${this.fontSize}px Arial`;
-          } else if (formato.tipo === "italic") {
-            ctx.font = `italic ${this.fontSize}px Arial`;
-          }
-
-          ctx.fillText(segmento, currentX, currentY);
-          currentX += ctx.measureText(segmento).width;
-          currentPos = endPos;
-        } else {
-          // Dibujar texto sin formato hasta el final
-          const segmento = linea.substring(currentPos);
-          ctx.font = `${this.fontSize}px Arial`;
-          ctx.fillText(segmento, currentX, currentY);
-          currentX += ctx.measureText(segmento).width;
-          currentPos = linea.length;
+        // Determinar hasta dónde aplicar estos formatos
+        let finSegmento = linea.length;
+        for (const formato of formatosAplicables) {
+          finSegmento = Math.min(finSegmento, formato.fin - lineaObj.inicio);
         }
+
+        // Aplicar estilos combinados
+        let fontStyle = this.fontSize + "px Arial";
+        if (formatosAplicables.some((f) => f.tipo === "bold")) {
+          fontStyle = "bold " + fontStyle;
+        }
+        if (formatosAplicables.some((f) => f.tipo === "italic")) {
+          fontStyle = "italic " + fontStyle;
+        }
+        ctx.font = fontStyle;
+
+        // Dibujar segmento
+        const segmento = linea.substring(currentPos, finSegmento);
+        ctx.fillText(segmento, currentX, currentY);
+        currentX += ctx.measureText(segmento).width;
+        currentPos = finSegmento;
       }
 
       currentY += this.fontSize + 4;
     });
 
+    // Dibujar bordes de selección si está seleccionado
     if (this.seleccionado) {
-      const alto = lineas.length * (this.fontSize + 4);
+      const altoTotal = lineas.length * (this.fontSize + 4);
       ctx.strokeStyle = "#000000cc";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         this.x - 5,
         this.y - this.fontSize,
         this.ancho + 10,
-        alto + 10
+        altoTotal + 10
       );
+
       ctx.fillStyle = "red";
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
