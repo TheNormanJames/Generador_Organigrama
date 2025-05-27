@@ -6,6 +6,8 @@ class MiniFigma {
     this.ctx = this.canvas.getContext("2d");
     this.setupCanvas();
 
+    this.initFormatButtons();
+
     this.state = {
       objetos: [],
       objetosSeleccionados: [],
@@ -32,6 +34,115 @@ class MiniFigma {
 
     this.initUIElements();
     this.setupEventListeners();
+    this.dibujar();
+  }
+  initFormatButtons() {
+    const botonesFormato = [
+      { id: "btnBold", tipo: "bold" },
+      { id: "btnItalic", tipo: "italic" },
+      { id: "btnAlignLeft", tipo: "align-left" },
+      { id: "btnAlignCenter", tipo: "align-center" },
+      { id: "btnAlignRight", tipo: "align-right" },
+    ];
+
+    botonesFormato.forEach((boton) => {
+      const elemento = document.getElementById(boton.id);
+      elemento.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+
+        // Solo para bold e italic, manejar selección de texto
+        if (boton.tipo === "bold" || boton.tipo === "italic") {
+          this.aplicarFormatoTextoSeleccionado(boton.tipo);
+        } else {
+          this.aplicarFormato(boton.tipo);
+        }
+      });
+    });
+  }
+
+  aplicarFormato(tipo) {
+    // Si estamos editando un texto, aplicamos al texto en edición
+    if (this.state.objetoEditando) {
+      this.aplicarFormatoATexto(this.state.objetoEditando, tipo);
+      return;
+    }
+
+    // Si no, aplicamos a todos los textos seleccionados
+    this.state.objetosSeleccionados.forEach((obj) => {
+      if (obj instanceof Texto) {
+        this.aplicarFormatoATexto(obj, tipo);
+      } else if (obj.hijos) {
+        // Para componentes con textos hijos
+        obj.hijos.forEach((hijo) => {
+          if (hijo instanceof Texto) {
+            this.aplicarFormatoATexto(hijo, tipo);
+          }
+        });
+      }
+    });
+
+    this.dibujar();
+  }
+  aplicarFormatoATexto(textoObj, tipo) {
+    switch (tipo) {
+      case "bold":
+        textoObj.bold = !textoObj.bold;
+        break;
+      case "italic":
+        textoObj.italic = !textoObj.italic;
+        break;
+      case "align-left":
+        textoObj.alineacion = "left";
+        break;
+      case "align-center":
+        textoObj.alineacion = "center";
+        break;
+      case "align-right":
+        textoObj.alineacion = "right";
+        break;
+    }
+
+    // Actualizar editor de texto si está visible
+    if (this.state.objetoEditando === textoObj) {
+      this.actualizarEstilosEditor();
+    }
+  }
+
+  aplicarFormatoTextoSeleccionado(tipo) {
+    if (!this.state.objetoEditando) return;
+
+    const textarea = this.editorTexto;
+    const inicio = textarea.selectionStart;
+    const fin = textarea.selectionEnd;
+
+    if (inicio === fin) return; // No hay texto seleccionado
+
+    // Aplicar formato al objeto en edición
+    this.state.objetoEditando.aplicarFormato(inicio, fin, tipo);
+
+    // Forzar redibujado
+    this.dibujar();
+  }
+  actualizarEstilosEditor() {
+    const textoObj = this.state.objetoEditando;
+    this.editorTexto.style.fontWeight = textoObj.bold ? "bold" : "normal";
+    this.editorTexto.style.fontStyle = textoObj.italic ? "italic" : "normal";
+    this.editorTexto.style.textAlign = textoObj.alineacion;
+  }
+  aplicarAlineacion(alineacion) {
+    if (
+      !this.state.objetoEditando &&
+      this.state.objetosSeleccionados.length === 0
+    )
+      return;
+
+    const textoObj =
+      this.state.objetoEditando ||
+      this.state.objetosSeleccionados.find((obj) => obj instanceof Texto);
+
+    if (!textoObj) return;
+
+    textoObj.alineacion = alineacion;
     this.dibujar();
   }
 
@@ -575,6 +686,16 @@ class MiniFigma {
       this.canvas.style.cursor = "grab";
     }
     if (e.ctrlKey) {
+      if (e.key === "b") {
+        e.preventDefault();
+        this.aplicarFormatoTextoSeleccionado("bold");
+        return;
+      }
+      if (e.key === "i") {
+        e.preventDefault();
+        this.aplicarFormatoTextoSeleccionado("italic");
+        return;
+      }
       if (e.key === "z") return this.deshacer();
       if (e.key === "y") return this.rehacer();
       if (e.key === "d") return this.duplicar();
@@ -596,9 +717,6 @@ class MiniFigma {
     this.editorTexto.style.left = pantallaX + "px";
     this.editorTexto.style.top = pantallaY + "px";
     this.editorTexto.style.width = textoObj.ancho + "px";
-    this.editorTexto.style.height = "auto";
-    this.editorTexto.style.lineHeight = textoObj.fontSize + 4 + "px";
-    this.editorTexto.style.fontSize = textoObj.fontSize + "px";
     this.editorTexto.style.display = "block";
     this.editorTexto.style.textAlign = textoObj.alineacion || "left";
 
@@ -607,26 +725,16 @@ class MiniFigma {
     this.state.objetoEditando = textoObj;
 
     this.editorTexto.onblur = () => {
-      const textoAnterior = textoObj.texto;
       textoObj.texto = this.editorTexto.value;
-
       const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
 
       if (padre) {
-        // Usar el contexto actual del canvas
         const ctx = this.ctx;
-
-        // 1. Calcular altura anterior
         const alturaAnterior = padre.calcularAltoTotal(ctx);
-
-        // 2. Reajustar posiciones con el nuevo texto
         padre.ajustarPosiciones(ctx);
-
-        // 3. Calcular nueva altura
         const nuevaAltura = padre.calcularAltoTotal(ctx);
         const diferencia = nuevaAltura - alturaAnterior;
 
-        // 4. Ajustar componentes debajo si hay cambio
         if (diferencia !== 0) {
           this.ajustarComponentesDebajo(padre, diferencia, ctx);
         }
@@ -636,6 +744,7 @@ class MiniFigma {
       this.state.objetoEditando = null;
       this.dibujar();
     };
+    this.editorTexto.focus();
   }
   ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
     if (deltaY === 0) return;
@@ -1485,6 +1594,24 @@ class Texto {
     this.seleccionado = false;
     this.ancho = ancho;
     this.alineacion = alineacion;
+    this.formatos = []; // Array para guardar rangos con formato
+  }
+
+  aplicarFormato(inicio, fin, tipo) {
+    // Eliminar formatos solapados
+    this.formatos = this.formatos.filter(
+      (f) => !(f.inicio <= fin && f.fin >= inicio)
+    );
+
+    // Agregar nuevo formato
+    this.formatos.push({
+      inicio: Math.max(0, inicio),
+      fin: Math.min(this.texto.length, fin),
+      tipo: tipo,
+    });
+
+    // Ordenar formatos por posición
+    this.formatos.sort((a, b) => a.inicio - b.inicio);
   }
 
   dividirTextoEnLineas(ctx) {
@@ -1530,17 +1657,63 @@ class Texto {
   }
 
   dibujar(ctx) {
-    ctx.fillStyle = this.color;
     ctx.font = `${this.fontSize}px Arial`;
+    ctx.fillStyle = this.color;
+    ctx.textAlign = this.alineacion;
+
     const lineas = this.dividirTextoEnLineas(ctx);
+    let currentY = this.y;
 
-    lineas.forEach((l, i) => {
-      ctx.textAlign = this.alineacion;
-      let textoX = this.x;
-      if (this.alineacion === "center") textoX = this.x + this.ancho / 2;
-      if (this.alineacion === "right") textoX = this.x + this.ancho;
+    lineas.forEach((linea) => {
+      let currentX = this.x;
+      if (this.alineacion === "center") currentX = this.x + this.ancho / 2;
+      if (this.alineacion === "right") currentX = this.x + this.ancho;
 
-      ctx.fillText(l.trim(), textoX, this.y + i * (this.fontSize + 4));
+      let currentPos = 0;
+      let lastPos = 0;
+
+      // Dibujar texto con formatos aplicados
+      while (currentPos < linea.length) {
+        // Encontrar el próximo formato que aplica
+        const formato = this.formatos.find(
+          (f) => f.inicio <= currentPos && f.fin > currentPos
+        );
+
+        if (formato) {
+          // Dibujar texto sin formato hasta el inicio del formato
+          if (currentPos < formato.inicio) {
+            const segmento = linea.substring(currentPos, formato.inicio);
+            ctx.font = `${this.fontSize}px Arial`;
+            ctx.fillText(segmento, currentX, currentY);
+            currentX += ctx.measureText(segmento).width;
+            currentPos = formato.inicio;
+          }
+
+          // Dibujar texto con formato
+          const endPos = Math.min(formato.fin, linea.length);
+          const segmento = linea.substring(currentPos, endPos);
+
+          // Aplicar estilo según el tipo
+          if (formato.tipo === "bold") {
+            ctx.font = `bold ${this.fontSize}px Arial`;
+          } else if (formato.tipo === "italic") {
+            ctx.font = `italic ${this.fontSize}px Arial`;
+          }
+
+          ctx.fillText(segmento, currentX, currentY);
+          currentX += ctx.measureText(segmento).width;
+          currentPos = endPos;
+        } else {
+          // Dibujar texto sin formato hasta el final
+          const segmento = linea.substring(currentPos);
+          ctx.font = `${this.fontSize}px Arial`;
+          ctx.fillText(segmento, currentX, currentY);
+          currentX += ctx.measureText(segmento).width;
+          currentPos = linea.length;
+        }
+      }
+
+      currentY += this.fontSize + 4;
     });
 
     if (this.seleccionado) {
@@ -1553,7 +1726,6 @@ class Texto {
         this.ancho + 10,
         alto + 10
       );
-
       ctx.fillStyle = "red";
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
