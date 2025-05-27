@@ -412,13 +412,6 @@ class MiniFigma {
       y < componente.y + this.calcularAltoComponente(componente) + 10
     );
   }
-  calcularAltoComponente(componente) {
-    const ultimoHijo = componente.hijos[componente.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split("\n").length || 1;
-    return (
-      ultimoHijo.y - componente.y + (ultimoHijo.fontSize + 4) * lineas + 20
-    );
-  }
 
   handleMouseMove(e) {
     const { offsetX, offsetY } = e;
@@ -448,11 +441,12 @@ class MiniFigma {
     if (state.arrastrando && state.componenteRedimensionando) {
       const nuevoAncho = Math.max(100, x - state.componenteRedimensionando.x);
       state.componenteRedimensionando.ancho = nuevoAncho;
-      state.componenteRedimensionando.hijos.forEach((hijo) => {
-        hijo.ancho = nuevoAncho;
-      });
+
+      // Actualizar ancho y recalcular posiciones
+      state.componenteRedimensionando.ajustarPosiciones();
+
       this.dibujar();
-      return; // Salir para no procesar movimiento normal
+      return;
     }
 
     // Desplazamiento del canvas
@@ -619,10 +613,41 @@ class MiniFigma {
 
     this.editorTexto.onblur = () => {
       textoObj.texto = this.editorTexto.value;
+
+      // 🔥 Reajustar posiciones del componente padre si existe
+      const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
+      console.log("Padre encontrado:", padre);
+      if (padre && padre.ajustarPosiciones) {
+        const alturaAntes = this.calcularAltoComponente(padre);
+        padre.ajustarPosiciones();
+        const alturaDespues = this.calcularAltoComponente(padre);
+        const diferencia = alturaDespues - alturaAntes;
+
+        // 🪄 Mover hacia abajo los hermanos que estén debajo
+        this.moverComponentesDebajo(padre, diferencia);
+      }
+
       this.editorTexto.style.display = "none";
       this.state.objetoEditando = null;
       this.dibujar();
     };
+  }
+
+  moverComponentesDebajo(componenteBase, deltaY) {
+    if (deltaY === 0) return;
+
+    const baseY = componenteBase.y;
+    this.state.objetos.forEach((obj) => {
+      if (
+        obj !== componenteBase &&
+        (obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo)
+      ) {
+        if (obj.y > baseY) {
+          obj.mover(0, deltaY);
+        }
+      }
+    });
   }
 
   mostrarPopup(circulo, x, y) {
@@ -717,55 +742,129 @@ class MiniFigma {
 
   // Métodos de historial
   guardarHistorial() {
-    const { historial, indiceHistorial } = this.state;
+    // Limpiar historial futuro si estamos en medio del historial
+    if (this.state.indiceHistorial < this.state.historial.length - 1) {
+      this.state.historial = this.state.historial.slice(
+        0,
+        this.state.indiceHistorial + 1
+      );
+    }
 
-    this.state.historial = historial.slice(0, indiceHistorial + 1);
-    const snapshot = JSON.stringify(this.state.objetos);
+    // Crear una copia profunda del estado actual
+    const snapshot = JSON.parse(
+      JSON.stringify(
+        this.state.objetos.map((obj) => {
+          if (obj instanceof Flecha) {
+            return {
+              type: "Flecha",
+              origenTempId: obj.origen.tempId,
+              destinoTempId: obj.destino.tempId,
+              color: obj.color,
+            };
+          }
+          return obj;
+        })
+      )
+    );
+
+    // Guardar el snapshot
     this.state.historial.push(snapshot);
-    if (this.state.historial.length > 20) this.state.historial.shift();
+    if (this.state.historial.length > 50) this.state.historial.shift();
     this.state.indiceHistorial = this.state.historial.length - 1;
   }
 
   deshacer() {
-    if (this.state.indiceHistorial > 0) {
-      this.state.indiceHistorial--;
-      const estadoPrevio = JSON.parse(
-        this.state.historial[this.state.indiceHistorial]
-      );
-      this.restaurarEstado(estadoPrevio);
-    }
+    if (this.state.indiceHistorial <= 0) return;
+
+    this.state.indiceHistorial--;
+    this.restaurarEstado(this.state.historial[this.state.indiceHistorial]);
   }
 
   rehacer() {
-    if (this.state.indiceHistorial < this.state.historial.length - 1) {
-      this.state.indiceHistorial++;
-      const estadoFuturo = JSON.parse(
-        this.state.historial[this.state.indiceHistorial]
-      );
-      this.restaurarEstado(estadoFuturo);
-    }
+    if (this.state.indiceHistorial >= this.state.historial.length - 1) return;
+
+    this.state.indiceHistorial++;
+    this.restaurarEstado(this.state.historial[this.state.indiceHistorial]);
   }
 
   restaurarEstado(estado) {
+    // Mapa para reconstruir referencias de flechas
+    const idMap = new Map();
+
+    // Primera pasada: crear todos los objetos básicos
     this.state.objetos = estado
-      .map((obj) => {
-        if (obj.radio) return new Circulo(obj.x, obj.y, obj.radio, obj.color);
-        if (obj.texto) {
-          return new Texto(
-            obj.x,
-            obj.y,
-            obj.texto,
-            obj.fontSize,
-            obj.color,
-            obj.ancho
+      .map((objData) => {
+        if (objData.type === "Circulo") {
+          const nuevoCirculo = new Circulo(
+            objData.x,
+            objData.y,
+            objData.radio,
+            objData.color
           );
-        }
-        if (obj.origen && obj.destino) {
-          return new Flecha(obj.origen, obj.destino, obj.color);
+          if (objData.tempId) idMap.set(objData.tempId, nuevoCirculo);
+          return nuevoCirculo;
+        } else if (objData.type === "Texto") {
+          const nuevoTexto = new Texto(
+            objData.x,
+            objData.y,
+            objData.texto,
+            objData.fontSize,
+            objData.color,
+            objData.ancho,
+            objData.alineacion
+          );
+          if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
+          return nuevoTexto;
+        } else if (
+          objData.type === "ComponenteTituloSumario" ||
+          objData.type === "ComponenteTituloCargo"
+        ) {
+          const ClaseComponente =
+            objData.type === "ComponenteTituloSumario"
+              ? ComponenteTituloSumario
+              : ComponenteTituloCargo;
+
+          const nuevoComponente = new ClaseComponente(objData.x, objData.y);
+          nuevoComponente.ancho = objData.ancho;
+          nuevoComponente.hijos = objData.hijos.map((hijoData) => {
+            const hijo = new Texto(
+              hijoData.x,
+              hijoData.y,
+              hijoData.texto,
+              hijoData.fontSize,
+              hijoData.color,
+              hijoData.ancho,
+              hijoData.alineacion
+            );
+            if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
+            return hijo;
+          });
+          if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
+          return nuevoComponente;
+        } else if (objData.type === "Flecha") {
+          return objData;
         }
         return null;
       })
       .filter(Boolean);
+
+    // Segunda pasada: procesar flechas
+    const objetosFinales = this.state.objetos.filter(
+      (obj) => obj.type !== "Flecha"
+    );
+
+    this.state.objetos.forEach((obj) => {
+      if (obj.type === "Flecha") {
+        const origen = idMap.get(obj.origenTempId);
+        const destino = idMap.get(obj.destinoTempId);
+
+        if (origen && destino) {
+          objetosFinales.unshift(new Flecha(origen, destino, obj.color));
+        }
+      }
+    });
+
+    this.state.objetos = objetosFinales;
     this.dibujar();
   }
 
@@ -1113,7 +1212,78 @@ class MiniFigma {
   }
 }
 
-// Clases de objetos del canvas
+class Componente {
+  constructor(x, y, tipo) {
+    this.x = x;
+    this.y = y;
+    this.hijos = [];
+    this.seleccionado = false;
+    this.ancho = 400;
+    this.type = tipo;
+    this.espaciado = 10;
+    this.margenInferior = 15;
+  }
+
+  ajustarPosiciones() {
+    let yActual = this.y;
+    this.hijos.forEach((hijo, i) => {
+      hijo.x = this.x;
+      hijo.y = yActual;
+      hijo.ancho = this.ancho;
+
+      const lineas = hijo.texto.split("\n").length || 1;
+      const alturaTexto = lineas * (hijo.fontSize + 4);
+      yActual += alturaTexto;
+
+      if (i < this.hijos.length - 1) {
+        yActual += this.espaciado;
+      }
+    });
+  }
+
+  dibujar(ctx) {
+    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
+
+    if (this.seleccionado) {
+      const ultimoHijo = this.hijos[this.hijos.length - 1];
+      const lineas = ultimoHijo.texto.split("\n").length || 1;
+      const altoTotal =
+        ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+
+      ctx.strokeStyle = "#00000088";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
+    }
+  }
+
+  contienePunto(x, y) {
+    const ultimoHijo = this.hijos[this.hijos.length - 1];
+    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    const altoTotal =
+      ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+
+    return (
+      x > this.x - 10 &&
+      x < this.x + this.ancho + 10 &&
+      y > this.y - 10 &&
+      y < this.y + altoTotal + 10
+    );
+  }
+
+  mover(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+    this.hijos.forEach((hijo) => {
+      hijo.x += dx;
+      hijo.y += dy;
+    });
+  }
+
+  generarIdUnico() {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  }
+}
+
 class Circulo {
   constructor(x, y, radio, color, imagen = null) {
     this.x = x;
@@ -1192,135 +1362,27 @@ class Circulo {
   }
 }
 
-// Añadir nueva clase ComponenteTexto
-// class ComponenteTexto {
-//   constructor(x, y) {
-//     this.x = x;
-//     this.y = y;
-//     this.hijos = [
-//       new Texto(x, y, "Título", 36, "#111111", 400, "center"),
-//       new Texto(x, y + 40, "Sumario", 24, "#333333", 400, "left"),
-//       new Texto(x, y + 80, "Texto principal", 18, "#444444", 400, "justify"),
-//       new Texto(x, y + 180, "Nombre del autor", 20, "#000000", 300, "left"),
-//       new Texto(x, y + 210, "Cargo del autor", 16, "#666666", 300, "left"),
-//       new Texto(x + 200, y + 210, "2025", 16, "#999999", 100, "right"),
-//     ];
-//     this.seleccionado = false;
-//     this.ancho = 400;
-
-//     // Asignar IDs temporales a los hijos
-//     this.hijos.forEach((hijo) => {
-//       hijo.tempId = this.generarIdUnico();
-//     });
-//   }
-
-//   generarIdUnico() {
-//     return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-//   }
-//   dibujar(ctx) {
-//     // Dibujar todos los hijos
-//     this.hijos.forEach((hijo) => hijo.dibujar(ctx));
-
-//     // Dibujar borde de selección
-//     if (this.seleccionado) {
-//       const altoTotal = this.calcularAltoTotal();
-//       ctx.strokeStyle = "#00000088";
-//       ctx.lineWidth = 2;
-//       ctx.strokeRect(this.x - 10, this.y - 30, this.ancho + 20, altoTotal + 50);
-//     }
-//   }
-
-//   calcularAltoTotal() {
-//     // Calcular el alto total basado en la posición del último elemento
-//     const ultimoHijo = this.hijos[this.hijos.length - 1];
-//     return ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
-//   }
-
-//   contienePunto(x, y) {
-//     const altoTotal = this.calcularAltoTotal();
-//     return (
-//       x > this.x - 10 &&
-//       x < this.x + this.ancho + 10 &&
-//       y > this.y - 30 &&
-//       y < this.y + altoTotal + 20
-//     );
-//   }
-
-//   mover(dx, dy) {
-//     this.x += dx;
-//     this.y += dy;
-//     this.hijos.forEach((h) => {
-//       h.x += dx;
-//       h.y += dy;
-//     });
-//   }
-
-//   // Método para editar un texto específico del componente
-//   editarTexto(indice, nuevoTexto) {
-//     if (indice >= 0 && indice < this.hijos.length) {
-//       this.hijos[indice].texto = nuevoTexto;
-//     }
-//   }
-// }
-// Nuevas clases para los componentes
-class ComponenteTituloSumario {
+class ComponenteTituloSumario extends Componente {
   constructor(x, y) {
-    this.x = x;
-    this.y = y;
+    super(x, y, "ComponenteTituloSumario");
+    this.espaciado = 15;
     this.hijos = [
       new Texto(x, y, "Título Principal", 36, "#111111", 400, "center"),
       new Texto(x, y + 50, "Sumario descriptivo", 24, "#333333", 400, "center"),
     ];
-    this.seleccionado = false;
-    this.ancho = 400;
-    this.type = "ComponenteTituloSumario";
+    this.ajustarPosiciones();
 
-    // Asignar IDs temporales
+    // Asignar IDs
     this.hijos.forEach((hijo) => {
       hijo.tempId = this.generarIdUnico();
     });
-    this.tempId = MiniFigma.instance.generarIdUnico();
-  }
-  generarIdUnico() {
-    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-  }
-
-  dibujar(ctx) {
-    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
-
-    if (this.seleccionado) {
-      const altoTotal = this.hijos[1].y - this.y + this.hijos[1].fontSize + 20;
-      ctx.strokeStyle = "#00000088";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
-    }
-  }
-
-  contienePunto(x, y) {
-    const ultimoHijo = this.hijos[this.hijos.length - 1];
-    const altoTotal = ultimoHijo.y - this.y + ultimoHijo.fontSize + 20;
-    return (
-      x > this.x - 10 &&
-      x < this.x + this.ancho + 10 &&
-      y > this.y - 10 &&
-      y < this.y + altoTotal + 10
-    );
-  }
-
-  mover(dx, dy) {
-    this.x += dx;
-    this.y += dy;
-    this.hijos.forEach((h) => {
-      h.x += dx;
-      h.y += dy;
-    });
+    this.tempId = this.generarIdUnico();
   }
 }
 
-class ComponenteTituloCargo {
+class ComponenteTituloCargo extends Componente {
   constructor(x, y) {
-    this.x = x;
-    this.y = y;
+    super(x, y, "ComponenteTituloCargo");
     this.hijos = [
       new Texto(x, y, "Título Secundario", 28, "#111111", 400, "left"),
       new Texto(x, y + 40, "Cargo o Posición", 18, "#666666", 400, "left"),
@@ -1334,57 +1396,13 @@ class ComponenteTituloCargo {
         "left"
       ),
     ];
-    this.seleccionado = false;
-    this.ancho = 400;
-    this.type = "ComponenteTituloCargo";
+    this.ajustarPosiciones();
 
-    // Asignar IDs temporales
+    // Asignar IDs
     this.hijos.forEach((hijo) => {
       hijo.tempId = this.generarIdUnico();
     });
-    this.tempId = MiniFigma.instance.generarIdUnico();
-  }
-
-  generarIdUnico() {
-    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-  }
-
-  dibujar(ctx) {
-    this.hijos.forEach((hijo) => hijo.dibujar(ctx));
-
-    if (this.seleccionado) {
-      const ultimoHijo = this.hijos[this.hijos.length - 1];
-      const lineas = ultimoHijo.texto.split("\n").length || 1;
-      const altoTotal =
-        ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
-
-      ctx.strokeStyle = "#00000088";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
-    }
-  }
-
-  contienePunto(x, y) {
-    const ultimoHijo = this.hijos[this.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split("\n").length || 1;
-    const altoTotal =
-      ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
-
-    return (
-      x > this.x - 10 &&
-      x < this.x + this.ancho + 10 &&
-      y > this.y - 10 &&
-      y < this.y + altoTotal + 10
-    );
-  }
-
-  mover(dx, dy) {
-    this.x += dx;
-    this.y += dy;
-    this.hijos.forEach((h) => {
-      h.x += dx;
-      h.y += dy;
-    });
+    this.tempId = this.generarIdUnico();
   }
 }
 
@@ -1439,20 +1457,26 @@ class Texto {
   }
 
   dividirTextoEnLineas(ctx) {
-    const lineas = [];
-    let palabras = this.texto.split(" ");
-    let linea = "";
+    // Si el texto contiene saltos de línea explícitos, respetarlos
+    if (this.texto.includes("\n")) {
+      return this.texto.split("\n");
+    }
 
-    for (let palabra of palabras) {
-      const prueba = linea + palabra + " ";
+    const lineas = [];
+    const palabras = this.texto.split(" ");
+    let lineaActual = "";
+
+    for (const palabra of palabras) {
+      const prueba = lineaActual + (lineaActual ? " " : "") + palabra;
       if (ctx.measureText(prueba).width > this.ancho) {
-        lineas.push(linea);
-        linea = palabra + " ";
+        if (lineaActual) lineas.push(lineaActual);
+        lineaActual = palabra;
       } else {
-        linea = prueba;
+        lineaActual = prueba;
       }
     }
-    lineas.push(linea);
+
+    if (lineaActual) lineas.push(lineaActual);
     return lineas;
   }
 
