@@ -89,18 +89,10 @@
         <input type="file" id="btnImportar" class="hidden" />
 
         <div class="flex space-x-1 ml-4">
-          <button
-            id="btnBold"
-            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-            title="Negrita (Ctrl+B)"
-          >
+          <button id="btnBold" class="btn-format" title="Negrita (Ctrl+B)">
             <strong>B</strong>
           </button>
-          <button
-            id="btnItalic"
-            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-            title="Cursiva (Ctrl+I)"
-          >
+          <button id="btnItalic" class="btn-format" title="Cursiva (Ctrl+I)">
             <em>I</em>
           </button>
           <button
@@ -236,6 +228,19 @@
       .align-icon {
         font-size: 14px;
         line-height: 1;
+      }
+
+      /* Estilo para botones activos */
+      .btn-format.active {
+        background-color: #3b82f6 !important;
+        color: white !important;
+      }
+
+      /* Estilos existentes para los botones */
+      .btn-format {
+        @apply px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition;
+        min-width: 32px;
+        font-family: Arial, sans-serif;
       }
     </style>
   </body>

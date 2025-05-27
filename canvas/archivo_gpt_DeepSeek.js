@@ -117,28 +117,49 @@ class MiniFigma {
 
     if (inicio === fin) return; // No hay texto seleccionado
 
-    // Obtener el texto antes de la selección para calcular saltos de línea
-    const textoAntes = textarea.value.substring(0, inicio);
-    const lineasAntes = textoAntes.split("\n");
-    const lineaActual = lineasAntes.length - 1;
+    // Aplicar/remover formato
+    this.state.objetoEditando.aplicarFormato(inicio, fin, tipo);
 
-    // Obtener el texto seleccionado
-    const textoSeleccionado = textarea.value.substring(inicio, fin);
-    const lineasSeleccionadas = textoSeleccionado.split("\n");
+    // Actualizar botones (para mostrar estado activo/inactivo)
+    this.actualizarEstadoBotones();
 
-    // Solo aplicar formato si la selección está en una sola línea
-    if (lineasSeleccionadas.length === 1) {
-      this.state.objetoEditando.aplicarFormato(inicio, fin, tipo);
-      this.dibujar();
-    } else {
-      alert("Solo puedes formatear texto dentro de una misma línea");
-    }
+    // Redibujar
+    this.dibujar();
   }
   actualizarEstilosEditor() {
     const textoObj = this.state.objetoEditando;
     this.editorTexto.style.fontWeight = textoObj.bold ? "bold" : "normal";
     this.editorTexto.style.fontStyle = textoObj.italic ? "italic" : "normal";
     this.editorTexto.style.textAlign = textoObj.alineacion;
+  }
+  actualizarEstadoBotones() {
+    if (!this.state.objetoEditando) return;
+
+    const textarea = this.editorTexto;
+    const inicio = textarea.selectionStart;
+    const fin = textarea.selectionEnd;
+
+    if (inicio === fin) {
+      // Sin selección - desactivar botones
+      document.getElementById("btnBold").classList.remove("active");
+      document.getElementById("btnItalic").classList.remove("active");
+      return;
+    }
+
+    // Verificar formatos en la selección actual
+    const textoObj = this.state.objetoEditando;
+    const tieneBold = textoObj.formatos.some(
+      (f) => f.tipo === "bold" && f.inicio < fin && f.fin > inicio
+    );
+    const tieneItalic = textoObj.formatos.some(
+      (f) => f.tipo === "italic" && f.inicio < fin && f.fin > inicio
+    );
+
+    // Actualizar apariencia de botones
+    document.getElementById("btnBold").classList.toggle("active", tieneBold);
+    document
+      .getElementById("btnItalic")
+      .classList.toggle("active", tieneItalic);
   }
   aplicarAlineacion(alineacion) {
     if (
@@ -774,6 +795,14 @@ class MiniFigma {
       this.dibujar();
     };
     this.editorTexto.focus();
+
+    // Actualizar estado de botones al mostrar editor
+    this.actualizarEstadoBotones();
+
+    // Configurar eventos para actualizar botones al seleccionar texto
+    this.editorTexto.addEventListener("select", () =>
+      this.actualizarEstadoBotones()
+    );
   }
   ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
     if (deltaY === 0) return;
@@ -1627,27 +1656,34 @@ class Texto {
   }
 
   aplicarFormato(inicio, fin, tipo) {
-    // Normalizar posiciones (asegurarse que inicio <= fin)
+    // Normalizar posiciones
     const start = Math.min(inicio, fin);
     const end = Math.max(inicio, fin);
 
-    // Eliminar formatos solapados en el rango exacto
-    this.formatos = this.formatos.filter(
-      (f) => !(f.inicio >= start && f.fin <= end)
+    // Verificar si ya existe el formato en ese rango
+    const formatoExistente = this.formatos.find(
+      (f) => f.inicio === start && f.fin === end && f.tipo === tipo
     );
 
-    // Agregar nuevo formato solo al rango seleccionado
-    this.formatos.push({
-      inicio: Math.max(0, start),
-      fin: Math.min(this.texto.length, end),
-      tipo: tipo,
-    });
+    if (formatoExistente) {
+      // Remover el formato si ya existe
+      this.formatos = this.formatos.filter((f) => f !== formatoExistente);
+    } else {
+      // Eliminar formatos solapados del mismo tipo
+      this.formatos = this.formatos.filter(
+        (f) => !(f.tipo === tipo && f.inicio < end && f.fin > start)
+      );
 
-    // Ordenar formatos por posición
+      // Agregar nuevo formato
+      this.formatos.push({
+        inicio: start,
+        fin: end,
+        tipo: tipo,
+      });
+    }
+
+    // Ordenar formatos
     this.formatos.sort((a, b) => a.inicio - b.inicio);
-
-    // Fusionar formatos adyacentes del mismo tipo
-    this.fusionarFormatosSimilares();
   }
   fusionarFormatosSimilares() {
     if (this.formatos.length < 2) return;
@@ -1714,70 +1750,64 @@ class Texto {
   }
 
   dibujar(ctx) {
-    ctx.font = `${this.fontSize}px Arial`;
-    ctx.fillStyle = this.color;
     ctx.textAlign = this.alineacion;
-
     const lineas = this.dividirTextoEnLineas(ctx);
     let currentY = this.y;
 
     // Calcular posiciones absolutas de cada línea
-    let posicionAbsoluta = 0;
-    const posicionesLineas = [];
-    let textoRestante = this.texto;
-
-    for (const linea of lineas) {
-      posicionesLineas.push({
-        inicio: posicionAbsoluta,
-        fin: posicionAbsoluta + linea.length,
+    let posAbsolutaAcumulada = 0;
+    const lineasConPosiciones = lineas.map((linea) => {
+      const lineaObj = {
         texto: linea,
-      });
-      posicionAbsoluta += linea.length + 1; // +1 por el salto de línea
-    }
+        inicio: posAbsolutaAcumulada,
+        fin: posAbsolutaAcumulada + linea.length,
+      };
+      posAbsolutaAcumulada += linea.length + 1; // +1 por el salto de línea implícito
+      return lineaObj;
+    });
 
-    // Dibujar cada línea con sus formatos
-    posicionesLineas.forEach((lineaObj) => {
+    // Dibujar cada línea
+    for (const linea of lineasConPosiciones) {
       let currentX = this.x;
       if (this.alineacion === "center") currentX = this.x + this.ancho / 2;
       if (this.alineacion === "right") currentX = this.x + this.ancho;
 
       let currentPos = 0;
-      const linea = lineaObj.texto;
 
-      while (currentPos < linea.length) {
-        // Calcular posición absoluta en el texto completo
-        const posAbsoluta = lineaObj.inicio + currentPos;
+      while (currentPos < linea.texto.length) {
+        const posAbsoluta = linea.inicio + currentPos;
 
-        // Encontrar formatos que aplican a esta posición
-        const formatosAplicables = this.formatos.filter(
+        // Encontrar todos los formatos que aplican a esta posición
+        const formatos = this.formatos.filter(
           (f) => posAbsoluta >= f.inicio && posAbsoluta < f.fin
         );
 
-        // Determinar hasta dónde aplicar estos formatos
-        let finSegmento = linea.length;
-        for (const formato of formatosAplicables) {
-          finSegmento = Math.min(finSegmento, formato.fin - lineaObj.inicio);
+        // Determinar hasta dónde extender el formato actual
+        let finSegmento = linea.texto.length;
+        for (const formato of formatos) {
+          finSegmento = Math.min(finSegmento, formato.fin - linea.inicio);
         }
 
-        // Aplicar estilos combinados
-        let fontStyle = this.fontSize + "px Arial";
-        if (formatosAplicables.some((f) => f.tipo === "bold")) {
-          fontStyle = "bold " + fontStyle;
-        }
-        if (formatosAplicables.some((f) => f.tipo === "italic")) {
-          fontStyle = "italic " + fontStyle;
-        }
+        // Configurar estilo
+        let fontStyle = "";
+        if (formatos.some((f) => f.tipo === "bold")) fontStyle += "bold ";
+        if (formatos.some((f) => f.tipo === "italic")) fontStyle += "italic ";
+        fontStyle += `${this.fontSize}px Arial`;
+
         ctx.font = fontStyle;
+        ctx.fillStyle = this.color;
 
         // Dibujar segmento
-        const segmento = linea.substring(currentPos, finSegmento);
+        const segmento = linea.texto.substring(currentPos, finSegmento);
         ctx.fillText(segmento, currentX, currentY);
+
+        // Actualizar posición
         currentX += ctx.measureText(segmento).width;
         currentPos = finSegmento;
       }
 
       currentY += this.fontSize + 4;
-    });
+    }
 
     // Dibujar bordes de selección si está seleccionado
     if (this.seleccionado) {
