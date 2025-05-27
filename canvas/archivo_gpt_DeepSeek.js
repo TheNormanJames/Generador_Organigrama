@@ -127,36 +127,31 @@ class MiniFigma {
   // Métodos de dibujo y renderizado
   dibujar() {
     const { ctx, canvas, state } = this;
-    const {
-      zoom,
-      offsetCanvas,
-      mostrarLimiteExportacion,
-      anchoLimiteExportacion,
-    } = state;
-
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(
+      state.zoom,
+      0,
+      0,
+      state.zoom,
+      state.offsetCanvas.x,
+      state.offsetCanvas.y
+    );
 
-    ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y);
-
-    // Dibujar límite de exportación si está activo
-    if (mostrarLimiteExportacion) {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 2 / zoom; // Ajustar grosor según el zoom
-      ctx.setLineDash([5 / zoom, 5 / zoom]); // Ajustar patrón de guiones según el zoom
-      ctx.strokeRect(0, 0, anchoLimiteExportacion, canvas.height / zoom);
-      ctx.setLineDash([]);
-    }
-
-    // Dibujar flechas primero para que queden detrás
+    // Dibujar flechas primero
     state.objetos
       .filter((obj) => obj instanceof Flecha)
       .forEach((obj) => obj.dibujar(ctx));
 
-    // Dibujar otros objetos
+    // Ajustar y dibujar otros objetos
     state.objetos
       .filter((obj) => !(obj instanceof Flecha))
-      .forEach((obj) => obj.dibujar(ctx));
+      .forEach((obj) => {
+        if (obj instanceof Componente) {
+          obj.ajustarPosiciones(ctx); // Ajustar con contexto válido
+        }
+        obj.dibujar(ctx);
+      });
   }
 
   exportarImagen() {
@@ -612,19 +607,29 @@ class MiniFigma {
     this.state.objetoEditando = textoObj;
 
     this.editorTexto.onblur = () => {
+      const textoAnterior = textoObj.texto;
       textoObj.texto = this.editorTexto.value;
 
-      // 🔥 Reajustar posiciones del componente padre si existe
       const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
-      console.log("Padre encontrado:", padre);
-      if (padre && padre.ajustarPosiciones) {
-        const alturaAntes = this.calcularAltoComponente(padre);
-        padre.ajustarPosiciones();
-        const alturaDespues = this.calcularAltoComponente(padre);
-        const diferencia = alturaDespues - alturaAntes;
 
-        // 🪄 Mover hacia abajo los hermanos que estén debajo
-        this.moverComponentesDebajo(padre, diferencia);
+      if (padre) {
+        // Usar el contexto actual del canvas
+        const ctx = this.ctx;
+
+        // 1. Calcular altura anterior
+        const alturaAnterior = padre.calcularAltoTotal(ctx);
+
+        // 2. Reajustar posiciones con el nuevo texto
+        padre.ajustarPosiciones(ctx);
+
+        // 3. Calcular nueva altura
+        const nuevaAltura = padre.calcularAltoTotal(ctx);
+        const diferencia = nuevaAltura - alturaAnterior;
+
+        // 4. Ajustar componentes debajo si hay cambio
+        if (diferencia !== 0) {
+          this.ajustarComponentesDebajo(padre, diferencia, ctx);
+        }
       }
 
       this.editorTexto.style.display = "none";
@@ -632,22 +637,61 @@ class MiniFigma {
       this.dibujar();
     };
   }
+  ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
+    if (deltaY === 0) return;
+
+    const baseY = componenteModificado.y;
+    const alturaComponente = componenteModificado.calcularAltoTotal(ctx);
+    const limiteInferior = baseY + alturaComponente;
+
+    this.state.objetos.forEach((obj) => {
+      if (
+        obj !== componenteModificado &&
+        (obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo) &&
+        obj.y >= baseY
+      ) {
+        // Mover el componente
+        obj.y += deltaY;
+
+        // Reajustar sus hijos con el contexto
+        obj.ajustarPosiciones(ctx);
+      }
+    });
+  }
 
   moverComponentesDebajo(componenteBase, deltaY) {
     if (deltaY === 0) return;
 
     const baseY = componenteBase.y;
+    const baseBottom =
+      componenteBase.y + this.calcularAltoComponente(componenteBase);
+
     this.state.objetos.forEach((obj) => {
       if (
         obj !== componenteBase &&
         (obj instanceof ComponenteTituloSumario ||
           obj instanceof ComponenteTituloCargo)
       ) {
-        if (obj.y > baseY) {
+        // Solo mover componentes que estén debajo del componente base
+        if (obj.y >= baseBottom) {
           obj.mover(0, deltaY);
+          // Asegurarse de que los hijos también se muevan
+          obj.ajustarPosiciones();
         }
       }
     });
+  }
+  calcularAltoTotalComponente(componente) {
+    let alturaTotal = 0;
+    componente.hijos.forEach((hijo, i) => {
+      const lineas = hijo.texto.split("\n").length || 1;
+      alturaTotal += lineas * (hijo.fontSize + 4);
+      if (i < componente.hijos.length - 1) {
+        alturaTotal += componente.espaciado;
+      }
+    });
+    return alturaTotal;
   }
 
   mostrarPopup(circulo, x, y) {
@@ -1224,21 +1268,38 @@ class Componente {
     this.margenInferior = 15;
   }
 
-  ajustarPosiciones() {
+  ajustarPosiciones(ctx) {
     let yActual = this.y;
-    this.hijos.forEach((hijo, i) => {
+
+    this.hijos.forEach((hijo, index) => {
+      // Usar el contexto para calcular la altura exacta
+      const alturaTexto = hijo.actualizarAlturaTexto(ctx);
+
       hijo.x = this.x;
       hijo.y = yActual;
       hijo.ancho = this.ancho;
 
-      const lineas = hijo.texto.split("\n").length || 1;
-      const alturaTexto = lineas * (hijo.fontSize + 4);
       yActual += alturaTexto;
 
-      if (i < this.hijos.length - 1) {
+      if (index < this.hijos.length - 1) {
         yActual += this.espaciado;
       }
     });
+
+    return yActual - this.y; // Retornar altura total
+  }
+  calcularAltoTotal(ctx) {
+    let alturaTotal = 0;
+
+    this.hijos.forEach((hijo, index) => {
+      alturaTotal += hijo.actualizarAlturaTexto(ctx);
+
+      if (index < this.hijos.length - 1) {
+        alturaTotal += this.espaciado;
+      }
+    });
+
+    return alturaTotal;
   }
 
   dibujar(ctx) {
@@ -1385,10 +1446,10 @@ class ComponenteTituloCargo extends Componente {
     super(x, y, "ComponenteTituloCargo");
     this.hijos = [
       new Texto(x, y, "Título Secundario", 28, "#111111", 400, "left"),
-      new Texto(x, y + 40, "Cargo o Posición", 18, "#666666", 400, "left"),
+      new Texto(x, y, "Cargo o Posición", 18, "#666666", 400, "left"),
       new Texto(
         x,
-        y + 70,
+        y,
         "Texto complementario o descripción adicional del cargo y responsabilidades.",
         16,
         "#444444",
@@ -1396,9 +1457,9 @@ class ComponenteTituloCargo extends Componente {
         "left"
       ),
     ];
-    this.ajustarPosiciones();
+    // Usar null como contexto inicial (se ajustará en el dibujado)
+    this.ajustarPosiciones(null);
 
-    // Asignar IDs
     this.hijos.forEach((hijo) => {
       hijo.tempId = this.generarIdUnico();
     });
@@ -1424,6 +1485,48 @@ class Texto {
     this.seleccionado = false;
     this.ancho = ancho;
     this.alineacion = alineacion;
+  }
+
+  dividirTextoEnLineas(ctx) {
+    // Verificar si tenemos contexto válido
+    if (!ctx) {
+      // Fallback: estimar líneas basado en longitud (menos preciso)
+      const approxCharsPerLine = Math.floor(this.ancho / (this.fontSize * 0.6));
+      const lineas = [];
+      let remainingText = this.texto;
+
+      while (remainingText.length > 0) {
+        lineas.push(remainingText.substring(0, approxCharsPerLine));
+        remainingText = remainingText.substring(approxCharsPerLine);
+      }
+      return lineas;
+    }
+
+    // Método preciso si tenemos contexto
+    ctx.font = `${this.fontSize}px Arial`;
+    const palabras = this.texto.split(" ");
+    let lineas = [];
+    let lineaActual = "";
+
+    for (const palabra of palabras) {
+      const prueba = lineaActual + (lineaActual ? " " : "") + palabra;
+      const medida = ctx.measureText(prueba).width;
+
+      if (medida > this.ancho && lineaActual) {
+        lineas.push(lineaActual);
+        lineaActual = palabra;
+      } else {
+        lineaActual = prueba;
+      }
+    }
+
+    if (lineaActual) lineas.push(lineaActual);
+    return lineas.length > 0 ? lineas : [this.texto];
+  }
+
+  actualizarAlturaTexto(ctx) {
+    const lineas = this.dividirTextoEnLineas(ctx);
+    return lineas.length * (this.fontSize + 4);
   }
 
   dibujar(ctx) {
@@ -1454,30 +1557,6 @@ class Texto {
       ctx.fillStyle = "red";
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
-  }
-
-  dividirTextoEnLineas(ctx) {
-    // Si el texto contiene saltos de línea explícitos, respetarlos
-    if (this.texto.includes("\n")) {
-      return this.texto.split("\n");
-    }
-
-    const lineas = [];
-    const palabras = this.texto.split(" ");
-    let lineaActual = "";
-
-    for (const palabra of palabras) {
-      const prueba = lineaActual + (lineaActual ? " " : "") + palabra;
-      if (ctx.measureText(prueba).width > this.ancho) {
-        if (lineaActual) lineas.push(lineaActual);
-        lineaActual = palabra;
-      } else {
-        lineaActual = prueba;
-      }
-    }
-
-    if (lineaActual) lineas.push(lineaActual);
-    return lineas;
   }
 
   contienePunto(x, y) {
