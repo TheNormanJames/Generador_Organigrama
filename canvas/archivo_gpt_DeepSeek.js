@@ -1854,94 +1854,379 @@ class Flecha {
     this.origen = origen;
     this.destino = destino;
     this.color = color;
+    this.margenSeguridad = 15; // Espacio alrededor de los objetos
+    this.checkpoints = []; // Puntos intermedios para rodear obstáculos
   }
 
   dibujar(ctx) {
-    const { x: x1, y: y1 } = this.calcularBorde(this.origen, this.destino);
-    const { x: x2, y: y2 } = this.calcularBorde(this.destino, this.origen);
+    const { x: x1, y: y1 } = this.calcularPuntoConexion(
+      this.origen,
+      this.destino
+    );
+    const { x: x2, y: y2 } = this.calcularPuntoConexion(
+      this.destino,
+      this.origen
+    );
 
+    // Calcular la ruta óptima
+    this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
+
+    // Dibujar la flecha
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
 
-    const obstaculo = this.detectarObstaculo(x1, y1, x2, y2);
+    // Mover al punto inicial
+    ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
 
-    if (obstaculo) {
-      const medioX = (x1 + x2) / 2;
-      ctx.moveTo(x1, y1);
-      ctx.quadraticCurveTo(medioX, y1, medioX, (y1 + y2) / 2);
-      ctx.quadraticCurveTo(medioX, y2, x2, y2);
-    } else {
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+    // Dibujar líneas rectas entre checkpoints
+    for (let i = 1; i < this.checkpoints.length; i++) {
+      ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
     }
+
     ctx.stroke();
 
-    this.dibujarPunta(ctx, x1, y1, x2, y2);
+    // Dibujar punta de flecha en el último segmento
+    if (this.checkpoints.length >= 2) {
+      const ultimoSegmento = this.checkpoints.slice(-2);
+      this.dibujarPunta(
+        ctx,
+        ultimoSegmento[0].x,
+        ultimoSegmento[0].y,
+        ultimoSegmento[1].x,
+        ultimoSegmento[1].y
+      );
+    }
+  }
+  calcularRutaOptima(x1, y1, x2, y2) {
+    const ruta = [{ x: x1, y: y1 }];
+    let puntoActual = { x: x1, y: y1 };
+    let intentos = 0;
+    const maxIntentos = 50; // Prevención de bucles infinitos
+
+    while (
+      intentos < maxIntentos &&
+      !this.puntoCercaDeDestino(puntoActual, x2, y2)
+    ) {
+      // Detectar obstáculos en el camino directo al destino
+      const obstaculos = this.detectarObstaculos(
+        puntoActual.x,
+        puntoActual.y,
+        x2,
+        y2
+      );
+
+      if (obstaculos.length === 0) {
+        // Camino libre, ir directo al destino
+        ruta.push({ x: x2, y: y2 });
+        break;
+      }
+
+      // Ordenar obstáculos por proximidad
+      obstaculos.sort((a, b) => {
+        const distA = this.distanciaEntrePuntos(puntoActual, a);
+        const distB = this.distanciaEntrePuntos(puntoActual, b);
+        return distA - distB;
+      });
+
+      const obstaculoMasCercano = obstaculos[0];
+
+      // Calcular puntos para rodear el obstáculo
+      const puntosRodeo = this.calcularPuntosRodeo(
+        puntoActual,
+        obstaculoMasCercano,
+        x2,
+        y2
+      );
+
+      if (puntosRodeo.length === 0) {
+        // No se encontró forma de rodear, avanzar hacia el destino
+        ruta.push({ x: x2, y: y2 });
+        break;
+      }
+
+      // Agregar puntos de rodeo a la ruta
+      ruta.push(...puntosRodeo);
+
+      // Actualizar punto actual al último punto de rodeo
+      puntoActual = puntosRodeo[puntosRodeo.length - 1];
+
+      intentos++;
+    }
+
+    return ruta;
   }
 
-  calcularBorde(origen, destino) {
-    const dx = destino.x - origen.x;
-    const dy = destino.y - origen.y;
-    const ang = Math.atan2(dy, dx);
-    const r = origen.radio || 0;
-    return {
-      x: origen.x + r * Math.cos(ang),
-      y: origen.y + r * Math.sin(ang),
-    };
+  calcularPuntosRodeo(puntoActual, obstaculo, xDest, yDest) {
+    const { x: ox, y: oy, ancho, alto } = obstaculo;
+    const margen = this.margenSeguridad;
+    const puntos = [];
+
+    // Calcular límites extendidos del obstáculo
+    const izquierda = ox - margen;
+    const derecha = ox + ancho + margen;
+    const arriba = oy - margen;
+    const abajo = oy + alto + margen;
+
+    // Determinar dirección general del flujo
+    const direccionX = xDest > puntoActual.x ? 1 : -1;
+    const direccionY = yDest > puntoActual.y ? 1 : -1;
+
+    // Generar posibles puntos de rodeo
+    const opciones = [];
+
+    // Puntos cardinales alrededor del obstáculo
+    opciones.push({ x: izquierda, y: arriba }); // Esquina superior izquierda
+    opciones.push({ x: derecha, y: arriba }); // Esquina superior derecha
+    opciones.push({ x: izquierda, y: abajo }); // Esquina inferior izquierda
+    opciones.push({ x: derecha, y: abajo }); // Esquina inferior derecha
+
+    // Puntos intermedios en los lados
+    opciones.push({ x: ox + ancho / 2, y: arriba }); // Centro arriba
+    opciones.push({ x: ox + ancho / 2, y: abajo }); // Centro abajo
+    opciones.push({ x: izquierda, y: oy + alto / 2 }); // Centro izquierda
+    opciones.push({ x: derecha, y: oy + alto / 2 }); // Centro derecha
+
+    // Filtrar puntos que estén dentro de otros obstáculos
+    const puntosValidos = opciones.filter(
+      (p) => !this.puntoDentroDeObstaculo(p.x, p.y)
+    );
+
+    if (puntosValidos.length === 0) return [];
+
+    // Seleccionar el punto que más acerque al destino
+    puntosValidos.sort((a, b) => {
+      const distA = this.distanciaEntrePuntos(a, { x: xDest, y: yDest });
+      const distB = this.distanciaEntrePuntos(b, { x: xDest, y: yDest });
+      return distA - distB;
+    });
+
+    const mejorPunto = puntosValidos[0];
+
+    // Calcular punto intermedio si es necesario para evitar ángulos muy agudos
+    if (
+      Math.abs(puntoActual.x - mejorPunto.x) >
+      Math.abs(puntoActual.y - mejorPunto.y)
+    ) {
+      // Mover primero horizontalmente
+      puntos.push({ x: mejorPunto.x, y: puntoActual.y });
+    } else {
+      // Mover primero verticalmente
+      puntos.push({ x: puntoActual.x, y: mejorPunto.y });
+    }
+
+    puntos.push(mejorPunto);
+
+    return puntos;
+  }
+  calcularPuntoConexion(objeto, otroObjeto) {
+    const dx = otroObjeto.x - objeto.x;
+    const dy = otroObjeto.y - objeto.y;
+    const angulo = Math.atan2(dy, dx);
+
+    // Para círculos
+    if (objeto instanceof Circulo) {
+      const r = objeto.radio + this.margenSeguridad / 2;
+      return {
+        x: objeto.x + r * Math.cos(angulo),
+        y: objeto.y + r * Math.sin(angulo),
+      };
+    }
+
+    // Para componentes de texto
+    if (
+      objeto instanceof Texto ||
+      (objeto instanceof Componente && objeto.hijos)
+    ) {
+      // Calcular punto de conexión en el borde del rectángulo
+      const ancho = objeto.ancho || 0;
+      const altura =
+        objeto instanceof Texto
+          ? objeto.fontSize * (objeto.texto.split("\n").length || 1)
+          : this.calcularAlturaComponente(objeto);
+
+      // Calcular intersección con el rectángulo
+      const mitadAncho = ancho / 2;
+      const mitadAltura = altura / 2;
+
+      // Calcular proporciones para encontrar el punto de intersección
+      const ratioX = mitadAncho / Math.abs(Math.cos(angulo));
+      const ratioY = mitadAltura / Math.abs(Math.sin(angulo));
+      const ratio = Math.min(ratioX, ratioY);
+
+      return {
+        x: objeto.x + mitadAncho + ratio * Math.cos(angulo),
+        y: objeto.y + mitadAltura + ratio * Math.sin(angulo),
+      };
+    }
+
+    // Por defecto, usar el centro del objeto
+    return { x: objeto.x, y: objeto.y };
   }
 
-  detectarObstaculo(x1, y1, x2, y2) {
-    const margen = 10;
-    const minX = Math.min(x1, x2);
-    const maxX = Math.max(x1, x2);
-    const minY = Math.min(y1, y2);
-    const maxY = Math.max(y1, y2);
+  calcularAlturaComponente(componente) {
+    if (!componente.hijos || componente.hijos.length === 0) return 0;
+    const ultimoHijo = componente.hijos[componente.hijos.length - 1];
+    return ultimoHijo.y - componente.y + ultimoHijo.fontSize;
+  }
+  detectarObstaculos(x1, y1, x2, y2) {
+    const margen = this.margenSeguridad;
+    const minX = Math.min(x1, x2) - margen;
+    const maxX = Math.max(x1, x2) + margen;
+    const minY = Math.min(y1, y2) - margen;
+    const maxY = Math.max(y1, y2) + margen;
 
-    return MiniFigma.instance.state.objetos.find((obj) => {
-      if (obj === this.origen || obj === this.destino) return false;
+    const obstaculos = [];
+
+    for (const obj of MiniFigma.instance.state.objetos) {
+      if (obj === this.origen || obj === this.destino) continue;
+
+      let ox, oy, ancho, alto;
 
       if (obj instanceof Circulo) {
-        return (
-          obj.x + obj.radio > minX - margen &&
-          obj.x - obj.radio < maxX + margen &&
-          obj.y + obj.radio > minY - margen &&
-          obj.y - obj.radio < maxY + margen
-        );
+        ox = obj.x - obj.radio - margen;
+        oy = obj.y - obj.radio - margen;
+        ancho = obj.radio * 2 + margen * 2;
+        alto = obj.radio * 2 + margen * 2;
       } else if (obj instanceof Texto) {
-        return (
-          obj.x < maxX + margen &&
-          obj.x + obj.ancho > minX - margen &&
-          obj.y < maxY + margen &&
-          obj.y > minY - margen
-        );
+        const lineas = obj.texto.split("\n").length || 1;
+        ox = obj.x - margen;
+        oy = obj.y - obj.fontSize - margen;
+        ancho = obj.ancho + margen * 2;
+        alto = (obj.fontSize + 4) * lineas + margen * 2;
+      } else if (obj instanceof Componente) {
+        const ultimoHijo = obj.hijos[obj.hijos.length - 1];
+        const lineas = ultimoHijo.texto.split("\n").length || 1;
+        ox = obj.x - margen;
+        oy = obj.y - margen;
+        ancho = obj.ancho + margen * 2;
+        alto =
+          ultimoHijo.y -
+          obj.y +
+          (ultimoHijo.fontSize + 4) * lineas +
+          margen * 2;
       }
-      return false;
-    });
+
+      // Verificar si el área del objeto intersecta con el área de la flecha
+      if (ox + ancho > minX && ox < maxX && oy + alto > minY && oy < maxY) {
+        // Verificar si realmente está en la línea entre origen y destino
+        if (
+          this.lineaIntersectaObjeto(x1, y1, x2, y2, {
+            x: ox,
+            y: oy,
+            ancho,
+            alto,
+          })
+        ) {
+          obstaculos.push({ x: ox, y: oy, ancho, alto, objeto: obj });
+        }
+      }
+    }
+
+    return obstaculos;
+  }
+
+  lineaIntersectaObjeto(x1, y1, x2, y2, objeto) {
+    // Coordenadas del objeto
+    const left = objeto.x;
+    const right = objeto.x + objeto.ancho;
+    const top = objeto.y;
+    const bottom = objeto.y + objeto.alto;
+
+    // Algoritmo de Liang-Barsky para clip de líneas
+    let t0 = 0;
+    let t1 = 1;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    const p = [-dx, dx, -dy, dy];
+    const q = [x1 - left, right - x1, y1 - top, bottom - y1];
+
+    for (let i = 0; i < 4; i++) {
+      if (p[i] === 0) {
+        if (q[i] < 0) return false; // Línea paralela y fuera del borde
+      } else {
+        const t = q[i] / p[i];
+        if (p[i] < 0) {
+          if (t > t1) return false;
+          if (t > t0) t0 = t;
+        } else {
+          if (t < t0) return false;
+          if (t < t1) t1 = t;
+        }
+      }
+    }
+
+    return t0 < t1; // Hay intersección si t0 < t1
+  }
+
+  puntoDentroDeObstaculo(x, y) {
+    for (const obj of MiniFigma.instance.state.objetos) {
+      if (obj === this.origen || obj === this.destino) continue;
+
+      if (obj instanceof Circulo) {
+        if (
+          Math.hypot(x - obj.x, y - obj.y) <
+          obj.radio + this.margenSeguridad
+        ) {
+          return true;
+        }
+      } else if (obj instanceof Texto || obj instanceof Componente) {
+        let ox, oy, ancho, alto;
+
+        if (obj instanceof Texto) {
+          const lineas = obj.texto.split("\n").length || 1;
+          ox = obj.x - this.margenSeguridad;
+          oy = obj.y - obj.fontSize - this.margenSeguridad;
+          ancho = obj.ancho + this.margenSeguridad * 2;
+          alto = (obj.fontSize + 4) * lineas + this.margenSeguridad * 2;
+        } else {
+          // Componente
+          const ultimoHijo = obj.hijos[obj.hijos.length - 1];
+          const lineas = ultimoHijo.texto.split("\n").length || 1;
+          ox = obj.x - this.margenSeguridad;
+          oy = obj.y - this.margenSeguridad;
+          ancho = obj.ancho + this.margenSeguridad * 2;
+          alto =
+            ultimoHijo.y -
+            obj.y +
+            (ultimoHijo.fontSize + 4) * lineas +
+            this.margenSeguridad * 2;
+        }
+
+        if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   dibujarPunta(ctx, x1, y1, x2, y2) {
     const angulo = Math.atan2(y2 - y1, x2 - x1);
     const tamañoFlecha = 10;
-    const espacioAntes = 8;
-
-    // Calcular la posición de la punta, dejando espacio antes del destino
-    const puntaX = x2 - espacioAntes * Math.cos(angulo);
-    const puntaY = y2 - espacioAntes * Math.sin(angulo);
 
     ctx.beginPath();
-    ctx.moveTo(puntaX, puntaY);
+    ctx.moveTo(x2, y2);
     ctx.lineTo(
-      puntaX - tamañoFlecha * Math.cos(angulo - Math.PI / 6),
-      puntaY - tamañoFlecha * Math.sin(angulo - Math.PI / 6)
+      x2 - tamañoFlecha * Math.cos(angulo - Math.PI / 6),
+      y2 - tamañoFlecha * Math.sin(angulo - Math.PI / 6)
     );
     ctx.lineTo(
-      puntaX - tamañoFlecha * Math.cos(angulo + Math.PI / 6),
-      puntaY - tamañoFlecha * Math.sin(angulo + Math.PI / 6)
+      x2 - tamañoFlecha * Math.cos(angulo + Math.PI / 6),
+      y2 - tamañoFlecha * Math.sin(angulo + Math.PI / 6)
     );
     ctx.closePath();
     ctx.fillStyle = this.color;
     ctx.fill();
+  }
+
+  puntoCercaDeDestino(punto, xDest, yDest, umbral = 5) {
+    return Math.hypot(punto.x - xDest, punto.y - yDest) < umbral;
+  }
+
+  distanciaEntrePuntos(p1, p2) {
+    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
   }
 
   contienePunto() {
