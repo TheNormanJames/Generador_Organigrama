@@ -215,6 +215,12 @@ class MiniFigma {
     );
     document.body.appendChild(this.editorTexto);
 
+    document.getElementById("btnCancelarFlecha").onclick = () => {
+      this.state.conectandoFlecha = false;
+      this.state.puntoInicioFlecha = null;
+      this.dibujar();
+    };
+
     // Popup para imágenes
     this.popup = document.createElement("div");
     this.popup.style.position = "absolute";
@@ -546,6 +552,15 @@ class MiniFigma {
         state.objetos.unshift(flecha);
         state.conectandoFlecha = false;
         state.puntoInicioFlecha = null;
+      }
+    }
+
+    // En el método handleMouseDown, agregar esta condición para seleccionar flechas
+    for (const obj of state.objetos) {
+      if (obj instanceof Flecha && this.flechaContienePunto(obj, x, y)) {
+        state.objetosSeleccionados = [obj];
+        obj.seleccionado = true;
+        break;
       }
     }
 
@@ -943,10 +958,74 @@ class MiniFigma {
     this.dibujar();
   }
 
+  // Nuevo método para verificar si un punto está cerca de una flecha
+  flechaContienePunto(flecha, x, y, margen = 5) {
+    // Verificar cada segmento de la flecha
+    for (let i = 0; i < flecha.checkpoints.length - 1; i++) {
+      const p1 = flecha.checkpoints[i];
+      const p2 = flecha.checkpoints[i + 1];
+
+      if (this.distanciaAPuntoLinea(x, y, p1.x, p1.y, p2.x, p2.y) < margen) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Método auxiliar para calcular distancia de punto a línea
+  distanciaAPuntoLinea(x, y, x1, y1, x2, y2) {
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq !== 0) param = dot / len_sq;
+
+    let xx, yy;
+
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+
+    const dx = x - xx;
+    const dy = y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   eliminar() {
-    this.state.objetos = this.state.objetos.filter(
-      (obj) => !this.state.objetosSeleccionados.includes(obj)
+    // Obtener IDs de los objetos a eliminar
+    const idsAEliminar = new Set(
+      this.state.objetosSeleccionados.map((obj) => obj.tempId)
     );
+
+    // Filtrar objetos principales y flechas conectadas
+    this.state.objetos = this.state.objetos.filter((obj) => {
+      // Eliminar objetos seleccionados directamente
+      if (this.state.objetosSeleccionados.includes(obj)) {
+        return false;
+      }
+
+      // Eliminar flechas que conectan a objetos que se están eliminando
+      if (obj instanceof Flecha) {
+        return !(
+          idsAEliminar.has(obj.origen.tempId) ||
+          idsAEliminar.has(obj.destino.tempId)
+        );
+      }
+
+      return true;
+    });
+
     this.guardarHistorial();
     this.dibujar();
   }
@@ -1868,25 +1947,19 @@ class Flecha {
       this.origen
     );
 
-    // Calcular la ruta óptima
     this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
 
     // Dibujar la flecha
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
-
-    // Mover al punto inicial
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
-
-    // Dibujar líneas rectas entre checkpoints
     for (let i = 1; i < this.checkpoints.length; i++) {
       ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
     }
-
     ctx.stroke();
 
-    // Dibujar punta de flecha en el último segmento
+    // Dibujar punta de flecha
     if (this.checkpoints.length >= 2) {
       const ultimoSegmento = this.checkpoints.slice(-2);
       this.dibujarPunta(
@@ -1897,6 +1970,24 @@ class Flecha {
         ultimoSegmento[1].y
       );
     }
+
+    // Resaltar si está seleccionada
+    if (this.seleccionado) {
+      ctx.strokeStyle = "#ff0000";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
+      for (let i = 1; i < this.checkpoints.length; i++) {
+        ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  conectaA(objeto) {
+    return this.origen === objeto || this.destino === objeto;
   }
   calcularRutaOptima(x1, y1, x2, y2) {
     const ruta = [{ x: x1, y: y1 }];
@@ -2231,6 +2322,9 @@ class Flecha {
 
   contienePunto() {
     return false;
+  }
+  conectaA(objeto) {
+    return this.origen === objeto || this.destino === objeto;
   }
 }
 
