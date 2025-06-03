@@ -1101,7 +1101,10 @@ class MiniFigma {
             objData.fontSize,
             objData.color,
             objData.ancho,
-            objData.alineacion
+            objData.alineacion,
+            objData.bold || false,
+            objData.italic || false,
+            objData.formatos || []
           );
           if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
           return nuevoTexto;
@@ -1124,7 +1127,10 @@ class MiniFigma {
               hijoData.fontSize,
               hijoData.color,
               hijoData.ancho,
-              hijoData.alineacion
+              hijoData.alineacion,
+              hijoData.bold || false,
+              hijoData.italic || false,
+              hijoData.formatos || []
             );
             if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
             return hijo;
@@ -1217,6 +1223,9 @@ class MiniFigma {
           objData.color = obj.color;
           objData.ancho = obj.ancho;
           objData.alineacion = obj.alineacion;
+          objData.bold = obj.bold;
+          objData.italic = obj.italic;
+          objData.formatos = obj.formatos; // Añadir formatos
           objData.tempId = obj.tempId;
         } else if (obj instanceof Flecha) {
           objData.origenTempId = obj.origen.tempId;
@@ -1239,24 +1248,10 @@ class MiniFigma {
               color: hijo.color,
               ancho: hijo.ancho,
               alineacion: hijo.alineacion,
+              bold: hijo.bold,
+              italic: hijo.italic,
+              formatos: hijo.formatos, // Añadir formatos para hijos
               tempId: hijo.tempId,
-            };
-          });
-        } else if (obj instanceof ComponenteTexto) {
-          objData.x = obj.x;
-          objData.y = obj.y;
-          objData.ancho = obj.ancho;
-          objData.tempId = obj.tempId;
-          objData.hijos = obj.hijos.map((hijo) => {
-            return {
-              x: hijo.x,
-              y: hijo.y,
-              texto: hijo.texto,
-              fontSize: hijo.fontSize,
-              color: hijo.color,
-              ancho: hijo.ancho,
-              alineacion: hijo.alineacion,
-              tempId: hijo.tempId || this.generarIdUnico(),
             };
           });
         }
@@ -1319,31 +1314,34 @@ class MiniFigma {
               objData.fontSize,
               objData.color,
               objData.ancho,
-              objData.alineacion
+              objData.alineacion,
+              objData.bold || false,
+              objData.italic || false,
+              objData.formatos || []
             );
             objetosCargados.push(nuevoTexto);
             if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
-          } else if (objData.type === "ComponenteTexto") {
-            // Crear los hijos primero
-            const hijos = objData.hijos.map((hijoData) => {
-              const hijo = new Texto(
-                hijoData.x,
-                hijoData.y,
-                hijoData.texto,
-                hijoData.fontSize,
-                hijoData.color,
-                hijoData.ancho,
-                hijoData.alineacion
-              );
-              if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
-              return hijo;
-            });
+            // } else if (objData.type === "ComponenteTexto") {
+            //   // Crear los hijos primero
+            //   const hijos = objData.hijos.map((hijoData) => {
+            //     const hijo = new Texto(
+            //       hijoData.x,
+            //       hijoData.y,
+            //       hijoData.texto,
+            //       hijoData.fontSize,
+            //       hijoData.color,
+            //       hijoData.ancho,
+            //       hijoData.alineacion
+            //     );
+            //     if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
+            //     return hijo;
+            //   });
 
-            const nuevoComponente = new ComponenteTexto(objData.x, objData.y);
-            nuevoComponente.hijos = hijos;
-            nuevoComponente.ancho = objData.ancho;
-            objetosCargados.push(nuevoComponente);
-            if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
+            //   const nuevoComponente = new ComponenteTexto(objData.x, objData.y);
+            //   nuevoComponente.hijos = hijos;
+            //   nuevoComponente.ancho = objData.ancho;
+            //   objetosCargados.push(nuevoComponente);
+            //   if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           } else if (
             objData.type === "ComponenteTituloSumario" ||
             objData.type === "ComponenteTituloCargo"
@@ -1356,7 +1354,7 @@ class MiniFigma {
             const nuevoComponente = new ClaseComponente(objData.x, objData.y);
             nuevoComponente.ancho = objData.ancho;
 
-            // Reconstruir hijos
+            // Reconstruir hijos con formatos
             nuevoComponente.hijos = objData.hijos.map((hijoData) => {
               const hijo = new Texto(
                 hijoData.x,
@@ -1365,7 +1363,10 @@ class MiniFigma {
                 hijoData.fontSize,
                 hijoData.color,
                 hijoData.ancho,
-                hijoData.alineacion
+                hijoData.alineacion,
+                hijoData.bold || false,
+                hijoData.italic || false,
+                hijoData.formatos || []
               );
               hijo.tempId = hijoData.tempId;
               idMap.set(hijoData.tempId, hijo);
@@ -1375,7 +1376,6 @@ class MiniFigma {
             objetosCargados.push(nuevoComponente);
             if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           } else if (objData.type === "Flecha") {
-            // Guardar datos de flecha para procesar después
             objetosCargados.push(objData);
           }
         }
@@ -1721,7 +1721,10 @@ class Texto {
     fontSize = 16,
     color = "black",
     ancho = 200,
-    alineacion = "left"
+    alineacion = "left",
+    bold = false,
+    italic = false,
+    formatos = []
   ) {
     this.x = x;
     this.y = y;
@@ -1731,7 +1734,9 @@ class Texto {
     this.seleccionado = false;
     this.ancho = ancho;
     this.alineacion = alineacion;
-    this.formatos = []; // Array para guardar rangos con formato
+    this.bold = bold;
+    this.italic = italic;
+    this.formatos = formatos; // Array para guardar rangos con formato
   }
 
   aplicarFormato(inicio, fin, tipo) {
@@ -1869,8 +1874,10 @@ class Texto {
 
         // Configurar estilo
         let fontStyle = "";
-        if (formatos.some((f) => f.tipo === "bold")) fontStyle += "bold ";
-        if (formatos.some((f) => f.tipo === "italic")) fontStyle += "italic ";
+        if (this.bold || formatos.some((f) => f.tipo === "bold"))
+          fontStyle += "bold ";
+        if (this.italic || formatos.some((f) => f.tipo === "italic"))
+          fontStyle += "italic ";
         fontStyle += `${this.fontSize}px Arial`;
 
         ctx.font = fontStyle;
