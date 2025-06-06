@@ -2,8 +2,8 @@
 
 class MiniFigma {
   constructor() {
-    this.canvas = document.getElementById("miCanvas");
-    this.ctx = this.canvas.getContext("2d");
+    this.canvas = document.getElementById('miCanvas');
+    this.ctx = this.canvas.getContext('2d');
     this.setupCanvas();
 
     this.initFormatButtons();
@@ -38,20 +38,20 @@ class MiniFigma {
   }
   initFormatButtons() {
     const botonesFormato = [
-      { id: "btnBold", tipo: "bold" },
-      { id: "btnItalic", tipo: "italic" },
-      { id: "btnAlignLeft", tipo: "align-left" },
-      { id: "btnAlignCenter", tipo: "align-center" },
-      { id: "btnAlignRight", tipo: "align-right" },
+      { id: 'btnBold', tipo: 'bold' },
+      { id: 'btnItalic', tipo: 'italic' },
+      { id: 'btnAlignLeft', tipo: 'align-left' },
+      { id: 'btnAlignCenter', tipo: 'align-center' },
+      { id: 'btnAlignRight', tipo: 'align-right' },
     ];
 
     botonesFormato.forEach((boton) => {
       const elemento = document.getElementById(boton.id);
-      elemento.addEventListener("mousedown", (e) => {
+      elemento.addEventListener('mousedown', (e) => {
         e.preventDefault();
 
         // Solo para bold e italic, manejar selección de texto
-        if (boton.tipo === "bold" || boton.tipo === "italic") {
+        if (boton.tipo === 'bold' || boton.tipo === 'italic') {
           this.aplicarFormatoTextoSeleccionado(boton.tipo);
         } else {
           this.aplicarFormato(boton.tipo);
@@ -85,20 +85,20 @@ class MiniFigma {
   }
   aplicarFormatoATexto(textoObj, tipo) {
     switch (tipo) {
-      case "bold":
+      case 'bold':
         textoObj.bold = !textoObj.bold;
         break;
-      case "italic":
+      case 'italic':
         textoObj.italic = !textoObj.italic;
         break;
-      case "align-left":
-        textoObj.alineacion = "left";
+      case 'align-left':
+        textoObj.alineacion = 'left';
         break;
-      case "align-center":
-        textoObj.alineacion = "center";
+      case 'align-center':
+        textoObj.alineacion = 'center';
         break;
-      case "align-right":
-        textoObj.alineacion = "right";
+      case 'align-right':
+        textoObj.alineacion = 'right';
         break;
     }
 
@@ -128,8 +128,8 @@ class MiniFigma {
   }
   actualizarEstilosEditor() {
     const textoObj = this.state.objetoEditando;
-    this.editorTexto.style.fontWeight = textoObj.bold ? "bold" : "normal";
-    this.editorTexto.style.fontStyle = textoObj.italic ? "italic" : "normal";
+    this.editorTexto.style.fontWeight = textoObj.bold ? 'bold' : 'normal';
+    this.editorTexto.style.fontStyle = textoObj.italic ? 'italic' : 'normal';
     this.editorTexto.style.textAlign = textoObj.alineacion;
   }
   actualizarEstadoBotones() {
@@ -141,25 +141,25 @@ class MiniFigma {
 
     if (inicio === fin) {
       // Sin selección - desactivar botones
-      document.getElementById("btnBold").classList.remove("active");
-      document.getElementById("btnItalic").classList.remove("active");
+      document.getElementById('btnBold').classList.remove('active');
+      document.getElementById('btnItalic').classList.remove('active');
       return;
     }
 
     // Verificar formatos en la selección actual
     const textoObj = this.state.objetoEditando;
     const tieneBold = textoObj.formatos.some(
-      (f) => f.tipo === "bold" && f.inicio < fin && f.fin > inicio
+      (f) => f.tipo === 'bold' && f.inicio < fin && f.fin > inicio
     );
     const tieneItalic = textoObj.formatos.some(
-      (f) => f.tipo === "italic" && f.inicio < fin && f.fin > inicio
+      (f) => f.tipo === 'italic' && f.inicio < fin && f.fin > inicio
     );
 
     // Actualizar apariencia de botones
-    document.getElementById("btnBold").classList.toggle("active", tieneBold);
+    document.getElementById('btnBold').classList.toggle('active', tieneBold);
     document
-      .getElementById("btnItalic")
-      .classList.toggle("active", tieneItalic);
+      .getElementById('btnItalic')
+      .classList.toggle('active', tieneItalic);
   }
   aplicarAlineacion(alineacion) {
     if (
@@ -182,7 +182,7 @@ class MiniFigma {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight - 65;
 
-    window.addEventListener("resize", () => {
+    window.addEventListener('resize', () => {
       this.canvas.width = window.innerWidth;
       this.canvas.height = window.innerHeight - 65;
       this.dibujar();
@@ -191,43 +191,43 @@ class MiniFigma {
 
   initUIElements() {
     // Editor de texto
-    this.editorTexto = document.createElement("textarea");
+    this.editorTexto = document.createElement('textarea');
     Object.assign(this.editorTexto.style, {
-      position: "absolute",
-      display: "none",
-      fontFamily: "Inter, sans-serif",
-      fontSize: "16px",
-      border: "1px solid #d1d5db",
-      padding: "6px 8px",
-      zIndex: "1000",
-      resize: "none",
-      outline: "none",
-      backgroundColor: "white",
-      borderRadius: "6px",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-      minHeight: "40px",
-      lineHeight: "1.5",
-      whiteSpace: "pre-wrap",
-      overflowWrap: "break-word",
+      position: 'absolute',
+      display: 'none',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      border: '1px solid #d1d5db',
+      padding: '6px 8px',
+      zIndex: '1000',
+      resize: 'none',
+      outline: 'none',
+      backgroundColor: 'white',
+      borderRadius: '6px',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+      minHeight: '40px',
+      lineHeight: '1.5',
+      whiteSpace: 'pre-wrap',
+      overflowWrap: 'break-word',
     });
-    this.editorTexto.addEventListener("input", () =>
+    this.editorTexto.addEventListener('input', () =>
       this.autosizeTextarea(this.editorTexto)
     );
     document.body.appendChild(this.editorTexto);
 
-    document.getElementById("btnCancelarFlecha").onclick = () => {
+    document.getElementById('btnCancelarFlecha').onclick = () => {
       this.state.conectandoFlecha = false;
       this.state.puntoInicioFlecha = null;
       this.dibujar();
     };
 
     // Popup para imágenes
-    this.popup = document.createElement("div");
-    this.popup.style.position = "absolute";
-    this.popup.style.padding = "10px";
-    this.popup.style.background = "white";
-    this.popup.style.border = "1px solid black";
-    this.popup.style.display = "none";
+    this.popup = document.createElement('div');
+    this.popup.style.position = 'absolute';
+    this.popup.style.padding = '10px';
+    this.popup.style.background = 'white';
+    this.popup.style.border = '1px solid black';
+    this.popup.style.display = 'none';
     this.popup.innerHTML = `
       <input type="text" placeholder="URL de imagen" id="imgUrl" style="display:block; margin-bottom:5px; width: 200px;"/>
       <input type="file" id="imgFile" accept="image/*"/>
@@ -235,37 +235,37 @@ class MiniFigma {
     document.body.appendChild(this.popup);
 
     // Botones de la interfaz
-    document.getElementById("circleBtn").onclick = () => this.crear("circulo");
-    document.getElementById("btnTituloSumario").onclick = () =>
-      this.crear("tituloSumario");
-    document.getElementById("btnTituloCargo").onclick = () =>
-      this.crear("tituloCargo");
-    document.getElementById("circleFlecha").onclick = () =>
-      this.crear("flechaConectada");
-    document.getElementById("btnFrente").onclick = () => this.moverZ("frente");
-    document.getElementById("btnFondo").onclick = () => this.moverZ("fondo");
-    document.getElementById("btnExportar").onclick = () => this.exportarJSON();
-    document.getElementById("btnImportar").onchange = (e) =>
+    document.getElementById('circleBtn').onclick = () => this.crear('circulo');
+    document.getElementById('btnTituloSumario').onclick = () =>
+      this.crear('tituloSumario');
+    document.getElementById('btnTituloCargo').onclick = () =>
+      this.crear('tituloCargo');
+    document.getElementById('circleFlecha').onclick = () =>
+      this.crear('flechaConectada');
+    document.getElementById('btnFrente').onclick = () => this.moverZ('frente');
+    document.getElementById('btnFondo').onclick = () => this.moverZ('fondo');
+    document.getElementById('btnExportar').onclick = () => this.exportarJSON();
+    document.getElementById('btnImportar').onchange = (e) =>
       this.importarJSON(e);
-    document.getElementById("btnExportarImagen").onclick = () =>
+    document.getElementById('btnExportarImagen').onclick = () =>
       this.exportarImagen();
-    document.getElementById("btnToggleLimite").onclick = () =>
+    document.getElementById('btnToggleLimite').onclick = () =>
       this.toggleLimiteExportacion();
   }
 
   setupEventListeners() {
     // Eventos del canvas
-    this.canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
-    this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
-    this.canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e));
-    this.canvas.addEventListener("dblclick", (e) => this.handleDoubleClick(e));
-    this.canvas.addEventListener("wheel", (e) => this.handleWheel(e), {
+    this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
+    this.canvas.addEventListener('wheel', (e) => this.handleWheel(e), {
       passive: false,
     });
 
     // Eventos del teclado
-    document.addEventListener("keydown", (e) => this.handleKeyDown(e));
-    document.addEventListener("keyup", (e) => this.handleKeyUp(e));
+    document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    document.addEventListener('keyup', (e) => this.handleKeyUp(e));
   }
 
   toggleLimiteExportacion() {
@@ -291,7 +291,7 @@ class MiniFigma {
     // Dibujar límite de exportación si está activo (corregido)
     if (mostrarLimiteExportacion) {
       ctx.save();
-      ctx.strokeStyle = "red";
+      ctx.strokeStyle = 'red';
       ctx.lineWidth = 2 / zoom;
       ctx.setLineDash([5 / zoom, 5 / zoom]);
       ctx.strokeRect(0, 0, anchoLimiteExportacion, canvas.height / zoom);
@@ -320,8 +320,8 @@ class MiniFigma {
     const objetosDentroLimite = this.getObjetosDentroLimite();
 
     // Crear un canvas temporal para la exportación
-    const canvasTemp = document.createElement("canvas");
-    const ctxTemp = canvasTemp.getContext("2d");
+    const canvasTemp = document.createElement('canvas');
+    const ctxTemp = canvasTemp.getContext('2d');
 
     // Calcular dimensiones necesarias (corregido)
     const { minX, minY, maxX, maxY } =
@@ -332,7 +332,7 @@ class MiniFigma {
     // Configurar canvas temporal
     canvasTemp.width = anchoExportacion;
     canvasTemp.height = altoExportacion;
-    ctxTemp.fillStyle = "white";
+    ctxTemp.fillStyle = 'white';
     ctxTemp.fillRect(0, 0, canvasTemp.width, canvasTemp.height);
 
     // Dibujar objetos en el canvas temporal (ajustando coordenadas)
@@ -359,9 +359,9 @@ class MiniFigma {
     });
 
     // Crear enlace de descarga
-    const enlace = document.createElement("a");
-    enlace.href = canvasTemp.toDataURL("image/png");
-    enlace.download = "diseño_exportado.png";
+    const enlace = document.createElement('a');
+    enlace.href = canvasTemp.toDataURL('image/png');
+    enlace.download = 'diseño_exportado.png';
     enlace.click();
   }
 
@@ -453,19 +453,19 @@ class MiniFigma {
     const { objetos } = this.state;
 
     switch (tipo) {
-      case "circulo":
-        objetos.push(new Circulo(100, 100, 30, "blue"));
+      case 'circulo':
+        objetos.push(new Circulo(100, 100, 30, 'blue'));
         break;
-      case "texto":
-        objetos.push(new Texto(150, 150, "Hola!", 18));
+      case 'texto':
+        objetos.push(new Texto(150, 150, 'Hola!', 18));
         break;
-      case "tituloSumario":
+      case 'tituloSumario':
         objetos.push(new ComponenteTituloSumario(150, 150));
         break;
-      case "tituloCargo":
+      case 'tituloCargo':
         objetos.push(new ComponenteTituloCargo(150, 150));
         break;
-      case "flechaConectada":
+      case 'flechaConectada':
         this.state.conectandoFlecha = true;
         break;
     }
@@ -478,7 +478,7 @@ class MiniFigma {
     texto,
     fontSize,
     color,
-    alineacion = "left",
+    alineacion = 'left',
     ancho = 300
   ) {
     const nuevoTexto = new Texto(150, 150, texto, fontSize, color, ancho);
@@ -568,7 +568,7 @@ class MiniFigma {
     if (state.modoPanActivo) {
       state.desplazandoCanvas = true;
       state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
-      this.canvas.style.cursor = "grabbing";
+      this.canvas.style.cursor = 'grabbing';
     }
 
     this.guardarHistorial();
@@ -734,56 +734,56 @@ class MiniFigma {
   handleKeyDown(e) {
     const state = this.state;
 
-    if (e.key === "Escape") {
-      this.editorTexto.style.display = "none";
+    if (e.key === 'Escape') {
+      this.editorTexto.style.display = 'none';
       state.objetoEditando = null;
     }
-    if (e.key === "Enter" && e.ctrlKey) {
+    if (e.key === 'Enter' && e.ctrlKey) {
       if (state.objetoEditando) {
         state.objetoEditando.texto = this.editorTexto.value;
-        this.editorTexto.style.display = "none";
+        this.editorTexto.style.display = 'none';
         state.objetoEditando = null;
         this.dibujar();
       }
     }
-    if (e.code === "Space" && !state.modoPanActivo) {
+    if (e.code === 'Space' && !state.modoPanActivo) {
       state.modoPanActivo = true;
-      this.canvas.style.cursor = "grab";
+      this.canvas.style.cursor = 'grab';
     }
     if (e.ctrlKey) {
-      if (e.key === "b") {
+      if (e.key === 'b') {
         e.preventDefault();
-        this.aplicarFormatoTextoSeleccionado("bold");
+        this.aplicarFormatoTextoSeleccionado('bold');
         return;
       }
-      if (e.key === "i") {
+      if (e.key === 'i') {
         e.preventDefault();
-        this.aplicarFormatoTextoSeleccionado("italic");
+        this.aplicarFormatoTextoSeleccionado('italic');
         return;
       }
-      if (e.key === "z") return this.deshacer();
-      if (e.key === "y") return this.rehacer();
-      if (e.key === "d") return this.duplicar();
+      if (e.key === 'z') return this.deshacer();
+      if (e.key === 'y') return this.rehacer();
+      if (e.key === 'd') return this.duplicar();
     }
-    if (e.key === "Delete") return this.eliminar();
+    if (e.key === 'Delete') return this.eliminar();
   }
 
   handleKeyUp(e) {
-    if (e.code === "Space") {
+    if (e.code === 'Space') {
       this.state.modoPanActivo = false;
       this.state.desplazandoCanvas = false;
-      this.canvas.style.cursor = "default";
+      this.canvas.style.cursor = 'default';
     }
   }
 
   // Métodos de UI
   mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
     this.editorTexto.value = textoObj.texto;
-    this.editorTexto.style.left = pantallaX + "px";
-    this.editorTexto.style.top = pantallaY + "px";
-    this.editorTexto.style.width = textoObj.ancho + "px";
-    this.editorTexto.style.display = "block";
-    this.editorTexto.style.textAlign = textoObj.alineacion || "left";
+    this.editorTexto.style.left = pantallaX + 'px';
+    this.editorTexto.style.top = pantallaY + 'px';
+    this.editorTexto.style.width = textoObj.ancho + 'px';
+    this.editorTexto.style.display = 'block';
+    this.editorTexto.style.textAlign = textoObj.alineacion || 'left';
 
     this.editorTexto.focus();
     this.autosizeTextarea(this.editorTexto);
@@ -805,7 +805,7 @@ class MiniFigma {
         }
       }
 
-      this.editorTexto.style.display = "none";
+      this.editorTexto.style.display = 'none';
       this.state.objetoEditando = null;
       this.dibujar();
     };
@@ -815,7 +815,7 @@ class MiniFigma {
     this.actualizarEstadoBotones();
 
     // Configurar eventos para actualizar botones al seleccionar texto
-    this.editorTexto.addEventListener("select", () =>
+    this.editorTexto.addEventListener('select', () =>
       this.actualizarEstadoBotones()
     );
   }
@@ -867,7 +867,7 @@ class MiniFigma {
   calcularAltoTotalComponente(componente) {
     let alturaTotal = 0;
     componente.hijos.forEach((hijo, i) => {
-      const lineas = hijo.texto.split("\n").length || 1;
+      const lineas = hijo.texto.split('\n').length || 1;
       alturaTotal += lineas * (hijo.fontSize + 4);
       if (i < componente.hijos.length - 1) {
         alturaTotal += componente.espaciado;
@@ -877,14 +877,14 @@ class MiniFigma {
   }
 
   mostrarPopup(circulo, x, y) {
-    this.popup.style.left = x + "px";
-    this.popup.style.top = y + "px";
-    this.popup.style.display = "block";
+    this.popup.style.left = x + 'px';
+    this.popup.style.top = y + 'px';
+    this.popup.style.display = 'block';
 
-    const imgUrlInput = this.popup.querySelector("#imgUrl");
-    const imgFileInput = this.popup.querySelector("#imgFile");
-    imgUrlInput.value = "";
-    imgFileInput.value = "";
+    const imgUrlInput = this.popup.querySelector('#imgUrl');
+    const imgFileInput = this.popup.querySelector('#imgFile');
+    imgUrlInput.value = '';
+    imgFileInput.value = '';
 
     const listenerUrl = () => {
       const url = imgUrlInput.value;
@@ -917,11 +917,11 @@ class MiniFigma {
   }
 
   ocultarPopup() {
-    this.popup.style.display = "none";
-    const imgUrlInput = this.popup.querySelector("#imgUrl");
-    const imgFileInput = this.popup.querySelector("#imgFile");
-    imgUrlInput.value = "";
-    imgFileInput.value = "";
+    this.popup.style.display = 'none';
+    const imgUrlInput = this.popup.querySelector('#imgUrl');
+    const imgFileInput = this.popup.querySelector('#imgFile');
+    imgUrlInput.value = '';
+    imgFileInput.value = '';
   }
 
   // Métodos de gestión de objetos
@@ -929,7 +929,7 @@ class MiniFigma {
     this.state.objetosSeleccionados.forEach((obj) => {
       const i = this.state.objetos.indexOf(obj);
       this.state.objetos.splice(i, 1);
-      dir === "frente"
+      dir === 'frente'
         ? this.state.objetos.push(obj)
         : this.state.objetos.unshift(obj);
     });
@@ -1046,7 +1046,7 @@ class MiniFigma {
         this.state.objetos.map((obj) => {
           if (obj instanceof Flecha) {
             return {
-              type: "Flecha",
+              type: 'Flecha',
               origenTempId: obj.origen.tempId,
               destinoTempId: obj.destino.tempId,
               color: obj.color,
@@ -1084,7 +1084,7 @@ class MiniFigma {
     // Primera pasada: crear todos los objetos básicos
     this.state.objetos = estado
       .map((objData) => {
-        if (objData.type === "Circulo") {
+        if (objData.type === 'Circulo') {
           const nuevoCirculo = new Circulo(
             objData.x,
             objData.y,
@@ -1093,7 +1093,7 @@ class MiniFigma {
           );
           if (objData.tempId) idMap.set(objData.tempId, nuevoCirculo);
           return nuevoCirculo;
-        } else if (objData.type === "Texto") {
+        } else if (objData.type === 'Texto') {
           const nuevoTexto = new Texto(
             objData.x,
             objData.y,
@@ -1106,11 +1106,11 @@ class MiniFigma {
           if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
           return nuevoTexto;
         } else if (
-          objData.type === "ComponenteTituloSumario" ||
-          objData.type === "ComponenteTituloCargo"
+          objData.type === 'ComponenteTituloSumario' ||
+          objData.type === 'ComponenteTituloCargo'
         ) {
           const ClaseComponente =
-            objData.type === "ComponenteTituloSumario"
+            objData.type === 'ComponenteTituloSumario'
               ? ComponenteTituloSumario
               : ComponenteTituloCargo;
 
@@ -1131,7 +1131,7 @@ class MiniFigma {
           });
           if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           return nuevoComponente;
-        } else if (objData.type === "Flecha") {
+        } else if (objData.type === 'Flecha') {
           return objData;
         }
         return null;
@@ -1140,11 +1140,11 @@ class MiniFigma {
 
     // Segunda pasada: procesar flechas
     const objetosFinales = this.state.objetos.filter(
-      (obj) => obj.type !== "Flecha"
+      (obj) => obj.type !== 'Flecha'
     );
 
     this.state.objetos.forEach((obj) => {
-      if (obj.type === "Flecha") {
+      if (obj.type === 'Flecha') {
         const origen = idMap.get(obj.origenTempId);
         const destino = idMap.get(obj.destinoTempId);
 
@@ -1168,11 +1168,11 @@ class MiniFigma {
           return;
         }
 
-        const canvas = document.createElement("canvas");
+        const canvas = document.createElement('canvas');
         // Usar el tamaño original de la imagen
         canvas.width = circulo.imagen.naturalWidth || circulo.imagen.width;
         canvas.height = circulo.imagen.naturalHeight || circulo.imagen.height;
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext('2d');
 
         // Dibujar la imagen completa sin recortar
         ctx.drawImage(circulo.imagen, 0, 0, canvas.width, canvas.height);
@@ -1266,15 +1266,15 @@ class MiniFigma {
     )
       .then((objetosParaExportar) => {
         const data = JSON.stringify(objetosParaExportar);
-        const blob = new Blob([data], { type: "application/json" });
-        const enlace = document.createElement("a");
+        const blob = new Blob([data], { type: 'application/json' });
+        const enlace = document.createElement('a');
         enlace.href = URL.createObjectURL(blob);
-        enlace.download = "mini_figma_design.json";
+        enlace.download = 'mini_figma_design.json';
         enlace.click();
       })
       .catch((error) => {
-        console.error("Error al exportar:", error);
-        alert("Ocurrió un error al exportar el diseño");
+        console.error('Error al exportar:', error);
+        alert('Ocurrió un error al exportar el diseño');
       });
   }
 
@@ -1293,7 +1293,7 @@ class MiniFigma {
 
         // Primera pasada: crear todos los objetos básicos
         for (const objData of parsed) {
-          if (objData.type === "Circulo") {
+          if (objData.type === 'Circulo') {
             const nuevoCirculo = new Circulo(
               objData.x,
               objData.y,
@@ -1311,7 +1311,7 @@ class MiniFigma {
 
             objetosCargados.push(nuevoCirculo);
             if (objData.tempId) idMap.set(objData.tempId, nuevoCirculo);
-          } else if (objData.type === "Texto") {
+          } else if (objData.type === 'Texto') {
             const nuevoTexto = new Texto(
               objData.x,
               objData.y,
@@ -1323,7 +1323,7 @@ class MiniFigma {
             );
             objetosCargados.push(nuevoTexto);
             if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
-          } else if (objData.type === "ComponenteTexto") {
+          } else if (objData.type === 'ComponenteTexto') {
             // Crear los hijos primero
             const hijos = objData.hijos.map((hijoData) => {
               const hijo = new Texto(
@@ -1345,11 +1345,11 @@ class MiniFigma {
             objetosCargados.push(nuevoComponente);
             if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           } else if (
-            objData.type === "ComponenteTituloSumario" ||
-            objData.type === "ComponenteTituloCargo"
+            objData.type === 'ComponenteTituloSumario' ||
+            objData.type === 'ComponenteTituloCargo'
           ) {
             const ClaseComponente =
-              objData.type === "ComponenteTituloSumario"
+              objData.type === 'ComponenteTituloSumario'
                 ? ComponenteTituloSumario
                 : ComponenteTituloCargo;
 
@@ -1374,7 +1374,7 @@ class MiniFigma {
 
             objetosCargados.push(nuevoComponente);
             if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
-          } else if (objData.type === "Flecha") {
+          } else if (objData.type === 'Flecha') {
             // Guardar datos de flecha para procesar después
             objetosCargados.push(objData);
           }
@@ -1382,11 +1382,11 @@ class MiniFigma {
 
         // Segunda pasada: procesar flechas
         const objetosFinales = objetosCargados.filter(
-          (obj) => obj.type !== "Flecha"
+          (obj) => obj.type !== 'Flecha'
         );
 
         for (const objData of objetosCargados) {
-          if (objData.type === "Flecha") {
+          if (objData.type === 'Flecha') {
             const origen = idMap.get(objData.origenTempId);
             const destino = idMap.get(objData.destinoTempId);
 
@@ -1401,9 +1401,9 @@ class MiniFigma {
         this.state.objetos = objetosFinales;
         this.dibujar();
       } catch (e) {
-        console.error("Importación fallida", e);
+        console.error('Importación fallida', e);
         alert(
-          "Error al importar el archivo. Asegúrate de que es un archivo válido."
+          'Error al importar el archivo. Asegúrate de que es un archivo válido.'
         );
       }
     };
@@ -1439,38 +1439,38 @@ class MiniFigma {
           obj instanceof ComponenteTituloCargo) &&
         this.estaSobreHandlerRedimension(x, y, obj)
       ) {
-        this.canvas.style.cursor = "col-resize";
+        this.canvas.style.cursor = 'col-resize';
         return;
       }
     }
 
     if (state.textoRedimensionando) {
-      this.canvas.style.cursor = "ew-resize";
+      this.canvas.style.cursor = 'ew-resize';
       return;
     }
 
     for (const obj of state.objetos) {
       if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
-        this.canvas.style.cursor = "nwse-resize";
+        this.canvas.style.cursor = 'nwse-resize';
         return;
       }
       if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
-        this.canvas.style.cursor = "ew-resize";
+        this.canvas.style.cursor = 'ew-resize';
         return;
       }
     }
 
     if (state.conectandoFlecha) {
-      this.canvas.style.cursor = "crosshair";
+      this.canvas.style.cursor = 'crosshair';
       return;
     }
 
     const hovering = state.objetos.some((obj) => obj.contienePunto(x, y));
     this.canvas.style.cursor = state.arrastrando
-      ? "grabbing"
+      ? 'grabbing'
       : hovering
-      ? "move"
-      : "default";
+      ? 'move'
+      : 'default';
   }
 
   transformarCoordenadas(x, y) {
@@ -1482,8 +1482,8 @@ class MiniFigma {
   }
 
   autosizeTextarea(textarea) {
-    textarea.style.height = "auto";
-    textarea.style.height = textarea.scrollHeight + "px";
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
   }
 
   estaSobreHandlerRedimension(x, y, componente) {
@@ -1497,7 +1497,7 @@ class MiniFigma {
   }
   calcularAltoComponente(componente) {
     const ultimoHijo = componente.hijos[componente.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    const lineas = ultimoHijo.texto.split('\n').length || 1;
     return ultimoHijo.y - componente.y + (ultimoHijo.fontSize + 4) * lineas;
   }
 }
@@ -1553,11 +1553,11 @@ class Componente {
 
     if (this.seleccionado) {
       const ultimoHijo = this.hijos[this.hijos.length - 1];
-      const lineas = ultimoHijo.texto.split("\n").length || 1;
+      const lineas = ultimoHijo.texto.split('\n').length || 1;
       const altoTotal =
         ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
 
-      ctx.strokeStyle = "#00000088";
+      ctx.strokeStyle = '#00000088';
       ctx.lineWidth = 2;
       ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
     }
@@ -1565,7 +1565,7 @@ class Componente {
 
   contienePunto(x, y) {
     const ultimoHijo = this.hijos[this.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split("\n").length || 1;
+    const lineas = ultimoHijo.texto.split('\n').length || 1;
     const altoTotal =
       ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
 
@@ -1645,13 +1645,13 @@ class Circulo {
     }
 
     if (this.seleccionado) {
-      ctx.strokeStyle = "black";
+      ctx.strokeStyle = 'black';
       ctx.lineWidth = 3;
       ctx.stroke();
     }
 
     if (this.seleccionado) {
-      ctx.fillStyle = "red";
+      ctx.fillStyle = 'red';
       ctx.beginPath();
       ctx.arc(this.x + this.radio + 5, this.y, 5, 0, Math.PI * 2);
       ctx.fill();
@@ -1671,11 +1671,11 @@ class Circulo {
 
 class ComponenteTituloSumario extends Componente {
   constructor(x, y) {
-    super(x, y, "ComponenteTituloSumario");
+    super(x, y, 'ComponenteTituloSumario');
     this.espaciado = 15;
     this.hijos = [
-      new Texto(x, y, "Título Principal", 36, "#111111", 400, "center"),
-      new Texto(x, y + 50, "Sumario descriptivo", 24, "#333333", 400, "center"),
+      new Texto(x, y, 'Título Principal', 36, '#111111', 400, 'center'),
+      new Texto(x, y + 50, 'Sumario descriptivo', 24, '#333333', 400, 'center'),
     ];
     this.ajustarPosiciones();
 
@@ -1689,18 +1689,18 @@ class ComponenteTituloSumario extends Componente {
 
 class ComponenteTituloCargo extends Componente {
   constructor(x, y) {
-    super(x, y, "ComponenteTituloCargo");
+    super(x, y, 'ComponenteTituloCargo');
     this.hijos = [
-      new Texto(x, y, "Título Secundario", 28, "#111111", 400, "left"),
-      new Texto(x, y, "Cargo o Posición", 18, "#666666", 400, "left"),
+      new Texto(x, y, 'Título Secundario', 28, '#111111', 400, 'left'),
+      new Texto(x, y, 'Cargo o Posición', 18, '#666666', 400, 'left'),
       new Texto(
         x,
         y,
-        "Texto complementario o descripción adicional del cargo y responsabilidades.",
+        'Texto complementario o descripción adicional del cargo y responsabilidades.',
         16,
-        "#444444",
+        '#444444',
         400,
-        "left"
+        'left'
       ),
     ];
     // Usar null como contexto inicial (se ajustará en el dibujado)
@@ -1719,9 +1719,9 @@ class Texto {
     y,
     texto,
     fontSize = 16,
-    color = "black",
+    color = 'black',
     ancho = 200,
-    alineacion = "left"
+    alineacion = 'left'
   ) {
     this.x = x;
     this.y = y;
@@ -1803,12 +1803,12 @@ class Texto {
 
     // Método preciso si tenemos contexto
     ctx.font = `${this.fontSize}px Arial`;
-    const palabras = this.texto.split(" ");
+    const palabras = this.texto.split(' ');
     let lineas = [];
-    let lineaActual = "";
+    let lineaActual = '';
 
     for (const palabra of palabras) {
-      const prueba = lineaActual + (lineaActual ? " " : "") + palabra;
+      const prueba = lineaActual + (lineaActual ? ' ' : '') + palabra;
       const medida = ctx.measureText(prueba).width;
 
       if (medida > this.ancho && lineaActual) {
@@ -1848,8 +1848,8 @@ class Texto {
     // Dibujar cada línea
     for (const linea of lineasConPosiciones) {
       let currentX = this.x;
-      if (this.alineacion === "center") currentX = this.x + this.ancho / 2;
-      if (this.alineacion === "right") currentX = this.x + this.ancho;
+      if (this.alineacion === 'center') currentX = this.x + this.ancho / 2;
+      if (this.alineacion === 'right') currentX = this.x + this.ancho;
 
       let currentPos = 0;
 
@@ -1868,9 +1868,9 @@ class Texto {
         }
 
         // Configurar estilo
-        let fontStyle = "";
-        if (formatos.some((f) => f.tipo === "bold")) fontStyle += "bold ";
-        if (formatos.some((f) => f.tipo === "italic")) fontStyle += "italic ";
+        let fontStyle = '';
+        if (formatos.some((f) => f.tipo === 'bold')) fontStyle += 'bold ';
+        if (formatos.some((f) => f.tipo === 'italic')) fontStyle += 'italic ';
         fontStyle += `${this.fontSize}px Arial`;
 
         ctx.font = fontStyle;
@@ -1891,7 +1891,7 @@ class Texto {
     // Dibujar bordes de selección si está seleccionado
     if (this.seleccionado) {
       const altoTotal = lineas.length * (this.fontSize + 4);
-      ctx.strokeStyle = "#000000cc";
+      ctx.strokeStyle = '#000000cc';
       ctx.lineWidth = 1;
       ctx.strokeRect(
         this.x - 5,
@@ -1900,14 +1900,14 @@ class Texto {
         altoTotal + 10
       );
 
-      ctx.fillStyle = "red";
+      ctx.fillStyle = 'red';
       ctx.fillRect(this.x + this.ancho + 5, this.y - this.fontSize, 8, 8);
     }
   }
 
   contienePunto(x, y) {
     const lineHeight = this.fontSize + 4;
-    const lineas = this.texto.split("\n").length || 1;
+    const lineas = this.texto.split('\n').length || 1;
     const alto = lineas * lineHeight;
 
     return (
@@ -1929,7 +1929,7 @@ class Texto {
 }
 
 class Flecha {
-  constructor(origen, destino, color = "black") {
+  constructor(origen, destino, color = 'black') {
     this.origen = origen;
     this.destino = destino;
     this.color = color;
@@ -1949,14 +1949,32 @@ class Flecha {
 
     this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
 
-    // Dibujar la flecha
+    // Dibujar la flecha con curvas suaves
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
-    for (let i = 1; i < this.checkpoints.length; i++) {
-      ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
+
+    // Usar curvas Bézier para suavizar el camino
+    for (let i = 1; i < this.checkpoints.length - 1; i++) {
+      const xc = (this.checkpoints[i].x + this.checkpoints[i + 1].x) / 2;
+      const yc = (this.checkpoints[i].y + this.checkpoints[i + 1].y) / 2;
+      ctx.quadraticCurveTo(
+        this.checkpoints[i].x,
+        this.checkpoints[i].y,
+        xc,
+        yc
+      );
     }
+
+    // Último segmento recto para la punta de la flecha
+    if (this.checkpoints.length > 1) {
+      ctx.lineTo(
+        this.checkpoints[this.checkpoints.length - 1].x,
+        this.checkpoints[this.checkpoints.length - 1].y
+      );
+    }
+
     ctx.stroke();
 
     // Dibujar punta de flecha
@@ -1971,9 +1989,9 @@ class Flecha {
       );
     }
 
-    // Resaltar si está seleccionada
+    // Resaltar si está seleccionada (opcional)
     if (this.seleccionado) {
-      ctx.strokeStyle = "#ff0000";
+      ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 4;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -1990,62 +2008,187 @@ class Flecha {
     return this.origen === objeto || this.destino === objeto;
   }
   calcularRutaOptima(x1, y1, x2, y2) {
-    const ruta = [{ x: x1, y: y1 }];
-    let puntoActual = { x: x1, y: y1 };
-    let intentos = 0;
-    const maxIntentos = 50; // Prevención de bucles infinitos
+    // Configuración del algoritmo A*
+    const gridSize = 10; // Tamaño de la celda de la cuadrícula
+    const maxIterations = 1000; // Límite para evitar bucles infinitos
 
-    while (
-      intentos < maxIntentos &&
-      !this.puntoCercaDeDestino(puntoActual, x2, y2)
-    ) {
-      // Detectar obstáculos en el camino directo al destino
-      const obstaculos = this.detectarObstaculos(
-        puntoActual.x,
-        puntoActual.y,
-        x2,
-        y2
-      );
+    // Crear nodos inicial y final
+    const startNode = {
+      x: Math.round(x1 / gridSize) * gridSize,
+      y: Math.round(y1 / gridSize) * gridSize,
+      g: 0,
+      h: this.heuristic(x1, y1, x2, y2),
+      parent: null,
+    };
+    startNode.f = startNode.g + startNode.h;
 
-      if (obstaculos.length === 0) {
-        // Camino libre, ir directo al destino
-        ruta.push({ x: x2, y: y2 });
-        break;
+    const endNode = {
+      x: Math.round(x2 / gridSize) * gridSize,
+      y: Math.round(y2 / gridSize) * gridSize,
+    };
+
+    // Listas abierta y cerrada
+    const openList = [startNode];
+    const closedList = [];
+
+    let currentNode = null;
+    let iterations = 0;
+
+    while (openList.length > 0 && iterations < maxIterations) {
+      iterations++;
+
+      // Encontrar el nodo con menor f en la lista abierta
+      openList.sort((a, b) => a.f - b.f);
+      currentNode = openList.shift();
+
+      // ¿Hemos llegado al destino?
+      if (
+        this.puntosCercanos(
+          currentNode.x,
+          currentNode.y,
+          endNode.x,
+          endNode.y,
+          gridSize
+        )
+      ) {
+        // Reconstruir el camino
+        return this.reconstruirCamino(currentNode);
       }
 
-      // Ordenar obstáculos por proximidad
-      obstaculos.sort((a, b) => {
-        const distA = this.distanciaEntrePuntos(puntoActual, a);
-        const distB = this.distanciaEntrePuntos(puntoActual, b);
-        return distA - distB;
-      });
+      closedList.push(currentNode);
 
-      const obstaculoMasCercano = obstaculos[0];
+      // Generar vecinos
+      const vecinos = this.generarVecinos(currentNode, gridSize, endNode);
 
-      // Calcular puntos para rodear el obstáculo
-      const puntosRodeo = this.calcularPuntosRodeo(
-        puntoActual,
-        obstaculoMasCercano,
-        x2,
-        y2
-      );
+      for (const vecino of vecinos) {
+        // Si el vecino está en la lista cerrada o es un obstáculo, lo ignoramos
+        if (
+          closedList.some((n) => n.x === vecino.x && n.y === vecino.y) ||
+          this.puntoDentroDeObstaculo(vecino.x, vecino.y)
+        ) {
+          continue;
+        }
 
-      if (puntosRodeo.length === 0) {
-        // No se encontró forma de rodear, avanzar hacia el destino
-        ruta.push({ x: x2, y: y2 });
-        break;
+        // Calcular costos
+        const gTentativo =
+          currentNode.g + this.distanciaEntrePuntos(currentNode, vecino);
+
+        // Ver si el vecino ya está en la lista abierta
+        const nodoAbierto = openList.find(
+          (n) => n.x === vecino.x && n.y === vecino.y
+        );
+
+        if (!nodoAbierto || gTentativo < nodoAbierto.g) {
+          // Este camino es mejor, actualizamos o agregamos
+          if (!nodoAbierto) {
+            vecino.g = gTentativo;
+            vecino.h = this.heuristic(vecino.x, vecino.y, endNode.x, endNode.y);
+            vecino.f = vecino.g + vecino.h;
+            vecino.parent = currentNode;
+            openList.push(vecino);
+          } else {
+            nodoAbierto.g = gTentativo;
+            nodoAbierto.f = nodoAbierto.g + nodoAbierto.h;
+            nodoAbierto.parent = currentNode;
+          }
+        }
       }
-
-      // Agregar puntos de rodeo a la ruta
-      ruta.push(...puntosRodeo);
-
-      // Actualizar punto actual al último punto de rodeo
-      puntoActual = puntosRodeo[puntosRodeo.length - 1];
-
-      intentos++;
     }
 
-    return ruta;
+    // Si llegamos aquí sin encontrar un camino, devolvemos una línea recta (fallback)
+    return [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
+    ];
+  }
+  // Función heurística (distancia euclidiana)
+  heuristic(x1, y1, x2, y2) {
+    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+  }
+
+  // Generar vecinos (8 direcciones)
+  generarVecinos(nodo, gridSize, endNode) {
+    const vecinos = [];
+    const directions = [
+      { dx: 0, dy: -gridSize }, // arriba
+      { dx: gridSize, dy: 0 }, // derecha
+      { dx: 0, dy: gridSize }, // abajo
+      { dx: -gridSize, dy: 0 }, // izquierda
+      { dx: gridSize, dy: -gridSize }, // arriba-derecha
+      { dx: gridSize, dy: gridSize }, // abajo-derecha
+      { dx: -gridSize, dy: gridSize }, // abajo-izquierda
+      { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
+    ];
+
+    for (const dir of directions) {
+      const x = nodo.x + dir.dx;
+      const y = nodo.y + dir.dy;
+
+      // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
+      const enLineaRecta =
+        (x === nodo.x && x === endNode.x) ||
+        (y === nodo.y && y === endNode.y) ||
+        Math.abs(
+          (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
+        ) < 0.1;
+
+      vecinos.push({
+        x,
+        y,
+        bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
+      });
+    }
+
+    return vecinos;
+  }
+  // Reconstruir el camino desde el nodo final
+  reconstruirCamino(nodoFinal) {
+    const camino = [];
+    let currentNode = nodoFinal;
+
+    while (currentNode) {
+      camino.unshift({ x: currentNode.x, y: currentNode.y });
+      currentNode = currentNode.parent;
+    }
+
+    // Simplificar el camino eliminando nodos redundantes
+    return this.simplificarCamino(camino);
+  }
+
+  // Simplificar el camino eliminando puntos innecesarios
+  simplificarCamino(camino) {
+    if (camino.length <= 2) return camino;
+
+    const simplified = [camino[0]];
+    let lastDirection = null;
+
+    for (let i = 1; i < camino.length - 1; i++) {
+      const prev = simplified[simplified.length - 1];
+      const current = camino[i];
+      const next = camino[i + 1];
+
+      // Calcular direcciones
+      const dirCurrent = {
+        dx: current.x - prev.x,
+        dy: current.y - prev.y,
+      };
+
+      const dirNext = {
+        dx: next.x - current.x,
+        dy: next.y - current.y,
+      };
+
+      // Si la dirección cambia, mantener el punto actual
+      if (dirCurrent.dx !== dirNext.dx || dirCurrent.dy !== dirNext.dy) {
+        simplified.push(current);
+      }
+    }
+
+    simplified.push(camino[camino.length - 1]);
+    return simplified;
+  }
+  puntosCercanos(x1, y1, x2, y2, umbral) {
+    return Math.abs(x1 - x2) < umbral && Math.abs(y1 - y2) < umbral;
   }
 
   calcularPuntosRodeo(puntoActual, obstaculo, xDest, yDest) {
@@ -2110,6 +2253,43 @@ class Flecha {
 
     return puntos;
   }
+
+  // Generar vecinos (8 direcciones)
+  generarVecinos(nodo, gridSize, endNode) {
+    const vecinos = [];
+    const directions = [
+      { dx: 0, dy: -gridSize }, // arriba
+      { dx: gridSize, dy: 0 }, // derecha
+      { dx: 0, dy: gridSize }, // abajo
+      { dx: -gridSize, dy: 0 }, // izquierda
+      { dx: gridSize, dy: -gridSize }, // arriba-derecha
+      { dx: gridSize, dy: gridSize }, // abajo-derecha
+      { dx: -gridSize, dy: gridSize }, // abajo-izquierda
+      { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
+    ];
+
+    for (const dir of directions) {
+      const x = nodo.x + dir.dx;
+      const y = nodo.y + dir.dy;
+
+      // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
+      const enLineaRecta =
+        (x === nodo.x && x === endNode.x) ||
+        (y === nodo.y && y === endNode.y) ||
+        Math.abs(
+          (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
+        ) < 0.1;
+
+      vecinos.push({
+        x,
+        y,
+        bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
+      });
+    }
+
+    return vecinos;
+  }
+
   calcularPuntoConexion(objeto, otroObjeto) {
     const dx = otroObjeto.x - objeto.x;
     const dy = otroObjeto.y - objeto.y;
@@ -2133,7 +2313,7 @@ class Flecha {
       const ancho = objeto.ancho || 0;
       const altura =
         objeto instanceof Texto
-          ? objeto.fontSize * (objeto.texto.split("\n").length || 1)
+          ? objeto.fontSize * (objeto.texto.split('\n').length || 1)
           : this.calcularAlturaComponente(objeto);
 
       // Calcular intersección con el rectángulo
@@ -2180,14 +2360,14 @@ class Flecha {
         ancho = obj.radio * 2 + margen * 2;
         alto = obj.radio * 2 + margen * 2;
       } else if (obj instanceof Texto) {
-        const lineas = obj.texto.split("\n").length || 1;
+        const lineas = obj.texto.split('\n').length || 1;
         ox = obj.x - margen;
         oy = obj.y - obj.fontSize - margen;
         ancho = obj.ancho + margen * 2;
         alto = (obj.fontSize + 4) * lineas + margen * 2;
       } else if (obj instanceof Componente) {
         const ultimoHijo = obj.hijos[obj.hijos.length - 1];
-        const lineas = ultimoHijo.texto.split("\n").length || 1;
+        const lineas = ultimoHijo.texto.split('\n').length || 1;
         ox = obj.x - margen;
         oy = obj.y - margen;
         ancho = obj.ancho + margen * 2;
@@ -2252,6 +2432,27 @@ class Flecha {
   }
 
   puntoDentroDeObstaculo(x, y) {
+    // Primero verifica si el punto está cerca de los objetos conectados
+    if (
+      this.puntosCercanos(
+        x,
+        y,
+        this.origen.x,
+        this.origen.y,
+        this.margenSeguridad * 2
+      ) ||
+      this.puntosCercanos(
+        x,
+        y,
+        this.destino.x,
+        this.destino.y,
+        this.margenSeguridad * 2
+      )
+    ) {
+      return false;
+    }
+
+    // Luego verifica otros obstáculos
     for (const obj of MiniFigma.instance.state.objetos) {
       if (obj === this.origen || obj === this.destino) continue;
 
@@ -2266,7 +2467,7 @@ class Flecha {
         let ox, oy, ancho, alto;
 
         if (obj instanceof Texto) {
-          const lineas = obj.texto.split("\n").length || 1;
+          const lineas = obj.texto.split('\n').length || 1;
           ox = obj.x - this.margenSeguridad;
           oy = obj.y - obj.fontSize - this.margenSeguridad;
           ancho = obj.ancho + this.margenSeguridad * 2;
@@ -2274,7 +2475,7 @@ class Flecha {
         } else {
           // Componente
           const ultimoHijo = obj.hijos[obj.hijos.length - 1];
-          const lineas = ultimoHijo.texto.split("\n").length || 1;
+          const lineas = ultimoHijo.texto.split('\n').length || 1;
           ox = obj.x - this.margenSeguridad;
           oy = obj.y - this.margenSeguridad;
           ancho = obj.ancho + this.margenSeguridad * 2;
@@ -2329,6 +2530,6 @@ class Flecha {
 }
 
 // Inicialización de la aplicación
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   MiniFigma.instance = new MiniFigma();
 });
