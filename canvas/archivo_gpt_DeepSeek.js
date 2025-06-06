@@ -2024,6 +2024,7 @@ class Flecha {
   // Modificar el método calcularRutaOptima
   calcularRutaOptima(x1, y1, x2, y2) {
     const gridSize = 20; // Aumentar tamaño de celda para menos puntos
+    // const gridSize = 30; // Aumentar tamaño de celda para menos puntos
     const maxIterations = 500; // Reducir iteraciones para evitar zig-zags
 
     // Nodos inicial y final
