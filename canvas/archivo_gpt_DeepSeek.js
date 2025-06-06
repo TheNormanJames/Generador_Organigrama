@@ -1949,35 +1949,49 @@ class Flecha {
 
     this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
 
-    // Dibujar la flecha con curvas suaves
+    // Dibujar la flecha con curvas Bézier mejoradas
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
 
-    // Usar curvas Bézier para suavizar el camino
-    for (let i = 1; i < this.checkpoints.length - 1; i++) {
-      const xc = (this.checkpoints[i].x + this.checkpoints[i + 1].x) / 2;
-      const yc = (this.checkpoints[i].y + this.checkpoints[i + 1].y) / 2;
-      ctx.quadraticCurveTo(
-        this.checkpoints[i].x,
-        this.checkpoints[i].y,
-        xc,
-        yc
-      );
-    }
-
-    // Último segmento recto para la punta de la flecha
-    if (this.checkpoints.length > 1) {
+    // Para caminos con pocos puntos, usar línea recta
+    if (this.checkpoints.length <= 3) {
       ctx.lineTo(
         this.checkpoints[this.checkpoints.length - 1].x,
         this.checkpoints[this.checkpoints.length - 1].y
       );
+    } else {
+      // Usar curvas Bézier para caminos más complejos
+      let i = 1;
+      while (i < this.checkpoints.length - 1) {
+        const next =
+          i + 1 < this.checkpoints.length ? this.checkpoints[i + 1] : null;
+
+        if (next && i + 2 < this.checkpoints.length) {
+          // Curva suave que pasa por el punto medio
+          const cp1 = {
+            x: (this.checkpoints[i].x + next.x) / 2,
+            y: (this.checkpoints[i].y + next.y) / 2,
+          };
+          ctx.quadraticCurveTo(
+            this.checkpoints[i].x,
+            this.checkpoints[i].y,
+            cp1.x,
+            cp1.y
+          );
+          i += 1;
+        } else {
+          // Último segmento recto
+          ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
+          i++;
+        }
+      }
     }
 
     ctx.stroke();
 
-    // Dibujar punta de flecha
+    // Dibujar punta de flecha si hay al menos 2 puntos
     if (this.checkpoints.length >= 2) {
       const ultimoSegmento = this.checkpoints.slice(-2);
       this.dibujarPunta(
@@ -1989,7 +2003,7 @@ class Flecha {
       );
     }
 
-    // Resaltar si está seleccionada (opcional)
+    // Resaltar si está seleccionada
     if (this.seleccionado) {
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 4;
@@ -2007,12 +2021,12 @@ class Flecha {
   conectaA(objeto) {
     return this.origen === objeto || this.destino === objeto;
   }
+  // Modificar el método calcularRutaOptima
   calcularRutaOptima(x1, y1, x2, y2) {
-    // Configuración del algoritmo A*
-    const gridSize = 10; // Tamaño de la celda de la cuadrícula
-    const maxIterations = 1000; // Límite para evitar bucles infinitos
+    const gridSize = 20; // Aumentar tamaño de celda para menos puntos
+    const maxIterations = 500; // Reducir iteraciones para evitar zig-zags
 
-    // Crear nodos inicial y final
+    // Nodos inicial y final
     const startNode = {
       x: Math.round(x1 / gridSize) * gridSize,
       y: Math.round(y1 / gridSize) * gridSize,
@@ -2037,11 +2051,11 @@ class Flecha {
     while (openList.length > 0 && iterations < maxIterations) {
       iterations++;
 
-      // Encontrar el nodo con menor f en la lista abierta
+      // Ordenar y tomar el nodo con menor f
       openList.sort((a, b) => a.f - b.f);
       currentNode = openList.shift();
 
-      // ¿Hemos llegado al destino?
+      // Verificar si llegamos al destino
       if (
         this.puntosCercanos(
           currentNode.x,
@@ -2051,17 +2065,20 @@ class Flecha {
           gridSize
         )
       ) {
-        // Reconstruir el camino
-        return this.reconstruirCamino(currentNode);
+        return this.reconstruirYSuavizarCamino(currentNode);
       }
 
       closedList.push(currentNode);
 
-      // Generar vecinos
-      const vecinos = this.generarVecinos(currentNode, gridSize, endNode);
+      // Generar vecinos con preferencia a movimientos rectos
+      const vecinos = this.generarVecinosOptimizados(
+        currentNode,
+        gridSize,
+        endNode
+      );
 
       for (const vecino of vecinos) {
-        // Si el vecino está en la lista cerrada o es un obstáculo, lo ignoramos
+        // Saltar si está en lista cerrada o es obstáculo
         if (
           closedList.some((n) => n.x === vecino.x && n.y === vecino.y) ||
           this.puntoDentroDeObstaculo(vecino.x, vecino.y)
@@ -2073,29 +2090,30 @@ class Flecha {
         const gTentativo =
           currentNode.g + this.distanciaEntrePuntos(currentNode, vecino);
 
-        // Ver si el vecino ya está en la lista abierta
+        // Buscar en lista abierta
         const nodoAbierto = openList.find(
           (n) => n.x === vecino.x && n.y === vecino.y
         );
 
         if (!nodoAbierto || gTentativo < nodoAbierto.g) {
-          // Este camino es mejor, actualizamos o agregamos
+          const nuevoVecino = nodoAbierto || { ...vecino, parent: currentNode };
+          nuevoVecino.g = gTentativo;
+          nuevoVecino.h = this.heuristic(
+            nuevoVecino.x,
+            nuevoVecino.y,
+            endNode.x,
+            endNode.y
+          );
+          nuevoVecino.f = nuevoVecino.g + nuevoVecino.h;
+
           if (!nodoAbierto) {
-            vecino.g = gTentativo;
-            vecino.h = this.heuristic(vecino.x, vecino.y, endNode.x, endNode.y);
-            vecino.f = vecino.g + vecino.h;
-            vecino.parent = currentNode;
-            openList.push(vecino);
-          } else {
-            nodoAbierto.g = gTentativo;
-            nodoAbierto.f = nodoAbierto.g + nodoAbierto.h;
-            nodoAbierto.parent = currentNode;
+            openList.push(nuevoVecino);
           }
         }
       }
     }
 
-    // Si llegamos aquí sin encontrar un camino, devolvemos una línea recta (fallback)
+    // Fallback: línea recta si no se encontró camino
     return [
       { x: x1, y: y1 },
       { x: x2, y: y2 },
@@ -2106,41 +2124,109 @@ class Flecha {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
   }
 
-  // Generar vecinos (8 direcciones)
-  generarVecinos(nodo, gridSize, endNode) {
-    const vecinos = [];
-    const directions = [
-      { dx: 0, dy: -gridSize }, // arriba
-      { dx: gridSize, dy: 0 }, // derecha
-      { dx: 0, dy: gridSize }, // abajo
-      { dx: -gridSize, dy: 0 }, // izquierda
-      { dx: gridSize, dy: -gridSize }, // arriba-derecha
-      { dx: gridSize, dy: gridSize }, // abajo-derecha
-      { dx: -gridSize, dy: gridSize }, // abajo-izquierda
-      { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
-    ];
+  // Nuevo método para generar vecinos con preferencia a movimientos rectos
+  generarVecinosOptimizados(nodo, gridSize, endNode) {
+    const direcciones = [];
+    const dx = endNode.x - nodo.x;
+    const dy = endNode.y - nodo.y;
 
-    for (const dir of directions) {
-      const x = nodo.x + dir.dx;
-      const y = nodo.y + dir.dy;
-
-      // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
-      const enLineaRecta =
-        (x === nodo.x && x === endNode.x) ||
-        (y === nodo.y && y === endNode.y) ||
-        Math.abs(
-          (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
-        ) < 0.1;
-
-      vecinos.push({
-        x,
-        y,
-        bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
-      });
+    // Priorizar dirección hacia el destino
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direcciones.push(
+        { dx: Math.sign(dx) * gridSize, dy: 0, bonus: -10 }, // Movimiento principal
+        { dx: 0, dy: Math.sign(dy) * gridSize, bonus: -5 }, // Movimiento secundario
+        { dx: -Math.sign(dx) * gridSize, dy: 0 }, // Movimiento opuesto
+        { dx: 0, dy: -Math.sign(dy) * gridSize }
+      );
+    } else {
+      direcciones.push(
+        { dx: 0, dy: Math.sign(dy) * gridSize, bonus: -10 },
+        { dx: Math.sign(dx) * gridSize, dy: 0, bonus: -5 },
+        { dx: 0, dy: -Math.sign(dy) * gridSize },
+        { dx: -Math.sign(dx) * gridSize, dy: 0 }
+      );
     }
 
-    return vecinos;
+    // Añadir diagonales con menor prioridad
+    direcciones.push(
+      { dx: Math.sign(dx) * gridSize, dy: Math.sign(dy) * gridSize },
+      { dx: Math.sign(dx) * gridSize, dy: -Math.sign(dy) * gridSize },
+      { dx: -Math.sign(dx) * gridSize, dy: Math.sign(dy) * gridSize },
+      { dx: -Math.sign(dx) * gridSize, dy: -Math.sign(dy) * gridSize }
+    );
+
+    return direcciones.map((dir) => ({
+      x: nodo.x + dir.dx,
+      y: nodo.y + dir.dy,
+      bonus: dir.bonus || 0,
+    }));
   }
+  // Método mejorado para reconstruir y suavizar el camino
+  reconstruirYSuavizarCamino(nodoFinal) {
+    const camino = [];
+    let currentNode = nodoFinal;
+
+    // Reconstruir camino
+    while (currentNode) {
+      camino.unshift({ x: currentNode.x, y: currentNode.y });
+      currentNode = currentNode.parent;
+    }
+
+    // Simplificar eliminando nodos innecesarios
+    const simplificado = [camino[0]];
+    for (let i = 1; i < camino.length - 1; i++) {
+      const prev = simplificado[simplificado.length - 1];
+      const current = camino[i];
+      const next = camino[i + 1];
+
+      // Calcular ángulos
+      const ang1 = Math.atan2(current.y - prev.y, current.x - prev.x);
+      const ang2 = Math.atan2(next.y - current.y, next.x - current.x);
+
+      // Si el cambio de dirección es significativo (> 20 grados), mantener el punto
+      if (Math.abs(ang1 - ang2) > 0.35) {
+        // ~20 grados en radianes
+        simplificado.push(current);
+      }
+    }
+    simplificado.push(camino[camino.length - 1]);
+
+    return simplificado;
+  }
+  // generarVecinos(nodo, gridSize, endNode) {
+  //   const vecinos = [];
+  //   const directions = [
+  //     { dx: 0, dy: -gridSize }, // arriba
+  //     { dx: gridSize, dy: 0 }, // derecha
+  //     { dx: 0, dy: gridSize }, // abajo
+  //     { dx: -gridSize, dy: 0 }, // izquierda
+  //     { dx: gridSize, dy: -gridSize }, // arriba-derecha
+  //     { dx: gridSize, dy: gridSize }, // abajo-derecha
+  //     { dx: -gridSize, dy: gridSize }, // abajo-izquierda
+  //     { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
+  //   ];
+
+  //   for (const dir of directions) {
+  //     const x = nodo.x + dir.dx;
+  //     const y = nodo.y + dir.dy;
+
+  //     // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
+  //     const enLineaRecta =
+  //       (x === nodo.x && x === endNode.x) ||
+  //       (y === nodo.y && y === endNode.y) ||
+  //       Math.abs(
+  //         (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
+  //       ) < 0.1;
+
+  //     vecinos.push({
+  //       x,
+  //       y,
+  //       bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
+  //     });
+  //   }
+
+  //   return vecinos;
+  // }
   // Reconstruir el camino desde el nodo final
   reconstruirCamino(nodoFinal) {
     const camino = [];
@@ -2431,59 +2517,58 @@ class Flecha {
     return t0 < t1; // Hay intersección si t0 < t1
   }
 
+  // En la clase Flecha, modificar el método puntoDentroDeObstaculo
   puntoDentroDeObstaculo(x, y) {
-    // Primero verifica si el punto está cerca de los objetos conectados
-    if (
-      this.puntosCercanos(
-        x,
-        y,
-        this.origen.x,
-        this.origen.y,
-        this.margenSeguridad * 2
-      ) ||
-      this.puntosCercanos(
-        x,
-        y,
-        this.destino.x,
-        this.destino.y,
-        this.margenSeguridad * 2
-      )
-    ) {
-      return false;
+    // Margen más generoso para evitar rozar objetos
+    const margen = this.margenSeguridad * 1.5;
+
+    // Verificar objetos conectados primero
+    if (this.origen instanceof Circulo) {
+      if (
+        Math.hypot(x - this.origen.x, y - this.origen.y) <
+        this.origen.radio + margen
+      ) {
+        return false;
+      }
     }
 
-    // Luego verifica otros obstáculos
+    if (this.destino instanceof Circulo) {
+      if (
+        Math.hypot(x - this.destino.x, y - this.destino.y) <
+        this.destino.radio + margen
+      ) {
+        return false;
+      }
+    }
+
+    // Verificar otros obstáculos
     for (const obj of MiniFigma.instance.state.objetos) {
       if (obj === this.origen || obj === this.destino) continue;
 
       if (obj instanceof Circulo) {
-        if (
-          Math.hypot(x - obj.x, y - obj.y) <
-          obj.radio + this.margenSeguridad
-        ) {
+        if (Math.hypot(x - obj.x, y - obj.y) < obj.radio + margen) {
           return true;
         }
-      } else if (obj instanceof Texto || obj instanceof Componente) {
+      } else {
         let ox, oy, ancho, alto;
 
         if (obj instanceof Texto) {
           const lineas = obj.texto.split('\n').length || 1;
-          ox = obj.x - this.margenSeguridad;
-          oy = obj.y - obj.fontSize - this.margenSeguridad;
-          ancho = obj.ancho + this.margenSeguridad * 2;
-          alto = (obj.fontSize + 4) * lineas + this.margenSeguridad * 2;
-        } else {
-          // Componente
+          ox = obj.x - margen;
+          oy = obj.y - obj.fontSize - margen;
+          ancho = obj.ancho + margen * 2;
+          alto = (obj.fontSize + 4) * lineas + margen * 2;
+        } else if (obj instanceof Componente) {
           const ultimoHijo = obj.hijos[obj.hijos.length - 1];
           const lineas = ultimoHijo.texto.split('\n').length || 1;
-          ox = obj.x - this.margenSeguridad;
-          oy = obj.y - this.margenSeguridad;
-          ancho = obj.ancho + this.margenSeguridad * 2;
+          ox = obj.x - margen;
+          oy = obj.y - margen;
+          ancho = obj.ancho + margen * 2;
           alto =
             ultimoHijo.y -
             obj.y +
             (ultimoHijo.fontSize + 4) * lineas +
-            this.margenSeguridad * 2;
+            margen * 2;
         }
 
         if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
