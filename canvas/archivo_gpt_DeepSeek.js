@@ -777,6 +777,7 @@ class MiniFigma {
   }
 
   // Métodos de UI
+  // En la clase MiniFigma, modificar el método mostrarEditorTexto
   mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
     this.editorTexto.value = textoObj.texto;
     this.editorTexto.style.left = pantallaX + 'px';
@@ -791,33 +792,39 @@ class MiniFigma {
 
     this.editorTexto.onblur = () => {
       textoObj.texto = this.editorTexto.value;
+
+      // Forzar actualización de dimensiones
+      textoObj.actualizarDimensiones(this.ctx);
+
       const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
-
       if (padre) {
-        const ctx = this.ctx;
-        const alturaAnterior = padre.calcularAltoTotal(ctx);
-        padre.ajustarPosiciones(ctx);
-        const nuevaAltura = padre.calcularAltoTotal(ctx);
-        const diferencia = nuevaAltura - alturaAnterior;
-
-        if (diferencia !== 0) {
-          this.ajustarComponentesDebajo(padre, diferencia, ctx);
-        }
+        padre.ajustarPosiciones(this.ctx);
+        this.ajustarComponentesDebajo(padre, 0, this.ctx); // Forzar reflow
       }
 
       this.editorTexto.style.display = 'none';
       this.state.objetoEditando = null;
       this.dibujar();
     };
-    this.editorTexto.focus();
 
-    // Actualizar estado de botones al mostrar editor
-    this.actualizarEstadoBotones();
+    // Configurar evento input para actualización en tiempo real
+    this.editorTexto.oninput = () => {
+      textoObj.texto = this.editorTexto.value;
+      textoObj.actualizarDimensiones(this.ctx);
 
-    // Configurar eventos para actualizar botones al seleccionar texto
-    this.editorTexto.addEventListener('select', () =>
-      this.actualizarEstadoBotones()
-    );
+      const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
+      if (padre) {
+        const alturaAnterior = padre.calcularAltoTotal(this.ctx);
+        padre.ajustarPosiciones(this.ctx);
+        const nuevaAltura = padre.calcularAltoTotal(this.ctx);
+        const diferencia = nuevaAltura - alturaAnterior;
+
+        if (diferencia !== 0) {
+          this.ajustarComponentesDebajo(padre, diferencia, this.ctx);
+        }
+      }
+      this.dibujar();
+    };
   }
   ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
     if (deltaY === 0) return;
@@ -1516,21 +1523,28 @@ class Componente {
 
   ajustarPosiciones(ctx) {
     let yActual = this.y;
+    let maxAncho = 0;
 
     this.hijos.forEach((hijo, index) => {
-      // Usar el contexto para calcular la altura exacta
-      const alturaTexto = hijo.actualizarAlturaTexto(ctx);
+      // Actualizar dimensiones del hijo
+      hijo.actualizarDimensiones(ctx);
 
       hijo.x = this.x;
       hijo.y = yActual;
-      hijo.ancho = this.ancho;
+      hijo.ancho = this.ancho; // Mantener el ancho del componente
 
-      yActual += alturaTexto;
+      // Actualizar ancho máximo
+      if (hijo.ancho > maxAncho) maxAncho = hijo.ancho;
+
+      yActual += hijo.altura;
 
       if (index < this.hijos.length - 1) {
         yActual += this.espaciado;
       }
     });
+
+    // Actualizar ancho del componente si es necesario
+    this.ancho = Math.max(this.ancho, maxAncho);
 
     return yActual - this.y; // Retornar altura total
   }
@@ -1538,7 +1552,8 @@ class Componente {
     let alturaTotal = 0;
 
     this.hijos.forEach((hijo, index) => {
-      alturaTotal += hijo.actualizarAlturaTexto(ctx);
+      hijo.actualizarDimensiones(ctx);
+      alturaTotal += hijo.altura;
 
       if (index < this.hijos.length - 1) {
         alturaTotal += this.espaciado;
@@ -1549,31 +1564,34 @@ class Componente {
   }
 
   dibujar(ctx) {
+    // Actualizar dimensiones primero
+    const alturaTotal = this.calcularAltoTotal(ctx);
+
+    // Dibujar hijos
     this.hijos.forEach((hijo) => hijo.dibujar(ctx));
 
+    // Dibujar bordes de selección
     if (this.seleccionado) {
-      const ultimoHijo = this.hijos[this.hijos.length - 1];
-      const lineas = ultimoHijo.texto.split('\n').length || 1;
-      const altoTotal =
-        ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
-
       ctx.strokeStyle = '#00000088';
       ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
+      ctx.strokeRect(
+        this.x - 10,
+        this.y - 10,
+        this.ancho + 20,
+        alturaTotal + 20
+      );
     }
   }
 
   contienePunto(x, y) {
-    const ultimoHijo = this.hijos[this.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split('\n').length || 1;
-    const altoTotal =
-      ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+    // Usar altura calculada en lugar de estimada
+    const alturaTotal = this.calcularAltoTotal(MiniFigma.instance.ctx);
 
     return (
       x > this.x - 10 &&
       x < this.x + this.ancho + 10 &&
       y > this.y - 10 &&
-      y < this.y + altoTotal + 10
+      y < this.y + alturaTotal + 10
     );
   }
 
@@ -1734,6 +1752,27 @@ class Texto {
     this.formatos = []; // Array para guardar rangos con formato
   }
 
+  calcularAltura(ctx) {
+    const lineas = this.dividirTextoEnLineas(ctx);
+    return lineas.length * (this.fontSize + 4); // +4 para espacio entre líneas
+  }
+
+  actualizarDimensiones(ctx) {
+    this.altura = this.calcularAltura(ctx);
+
+    // Calcular ancho máximo de línea
+    if (ctx) {
+      ctx.font = `${this.fontSize}px Arial`;
+      const lineas = this.dividirTextoEnLineas(ctx);
+      let maxAncho = 0;
+      lineas.forEach((linea) => {
+        const anchoLinea = ctx.measureText(linea).width;
+        if (anchoLinea > maxAncho) maxAncho = anchoLinea;
+      });
+      this.ancho = Math.max(this.ancho, maxAncho);
+    }
+  }
+
   aplicarFormato(inicio, fin, tipo) {
     // Normalizar posiciones
     const start = Math.min(inicio, fin);
@@ -1829,6 +1868,7 @@ class Texto {
   }
 
   dibujar(ctx) {
+    this.actualizarDimensiones(ctx);
     ctx.textAlign = this.alineacion;
     const lineas = this.dividirTextoEnLineas(ctx);
     let currentY = this.y;
@@ -2524,9 +2564,7 @@ class Flecha {
     return t0 < t1;
   }
 
-  // En la clase Flecha, modificar el método puntoDentroDeObstaculo
   puntoDentroDeObstaculo(x, y) {
-    // Margen más generoso para evitar rozar objetos
     const margen = this.margenSeguridad * 1.5;
 
     // Verificar objetos conectados primero
@@ -2560,26 +2598,23 @@ class Flecha {
         let ox, oy, ancho, alto;
 
         if (obj instanceof Texto) {
-          const lineas = obj.texto.split('\n').length || 1;
+          obj.actualizarDimensiones(MiniFigma.instance.ctx);
           ox = obj.x - margen;
           oy = obj.y - obj.fontSize - margen;
           ancho = obj.ancho + margen * 2;
-          alto = (obj.fontSize + 4) * lineas + margen * 2;
+          alto = obj.altura + margen * 2;
         } else if (obj instanceof Componente) {
-          const ultimoHijo = obj.hijos[obj.hijos.length - 1];
-          const lineas = ultimoHijo.texto.split('\n').length || 1;
+          const alturaTotal = obj.calcularAltoTotal(MiniFigma.instance.ctx);
           ox = obj.x - margen;
           oy = obj.y - margen;
           ancho = obj.ancho + margen * 2;
-          alto =
-            ultimoHijo.y -
-            obj.y +
-            (ultimoHijo.fontSize + 4) * lineas +
-            margen * 2;
+          alto = alturaTotal + margen * 2;
         }
 
-        if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
-          return true;
+        if (ox && oy && ancho && alto) {
+          if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
+            return true;
+          }
         }
       }
     }
