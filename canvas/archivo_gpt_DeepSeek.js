@@ -1938,6 +1938,7 @@ class Flecha {
   }
 
   dibujar(ctx) {
+    // Recalcular siempre el camino para asegurar que esté actualizado
     const { x: x1, y: y1 } = this.calcularPuntoConexion(
       this.origen,
       this.destino
@@ -1949,49 +1950,46 @@ class Flecha {
 
     this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
 
-    // Dibujar la flecha con curvas Bézier mejoradas
+    // Asegurarnos de que tenemos al menos 2 puntos
+    if (this.checkpoints.length < 2) {
+      this.checkpoints = [
+        { x: x1, y: y1 },
+        { x: x2, y: y2 },
+      ];
+    } else {
+      // Forzar que el último punto sea exactamente el destino
+      this.checkpoints[this.checkpoints.length - 1] = { x: x2, y: y2 };
+    }
+
+    // Dibujar la flecha
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
 
-    // Para caminos con pocos puntos, usar línea recta
-    if (this.checkpoints.length <= 3) {
-      ctx.lineTo(
-        this.checkpoints[this.checkpoints.length - 1].x,
-        this.checkpoints[this.checkpoints.length - 1].y
-      );
+    if (this.checkpoints.length === 2) {
+      // Línea recta simple
+      ctx.lineTo(this.checkpoints[1].x, this.checkpoints[1].y);
     } else {
-      // Usar curvas Bézier para caminos más complejos
-      let i = 1;
-      while (i < this.checkpoints.length - 1) {
-        const next =
-          i + 1 < this.checkpoints.length ? this.checkpoints[i + 1] : null;
+      // Curvas Bézier suavizadas
+      for (let i = 1; i < this.checkpoints.length; i++) {
+        const prev = this.checkpoints[i - 1];
+        const curr = this.checkpoints[i];
 
-        if (next && i + 2 < this.checkpoints.length) {
-          // Curva suave que pasa por el punto medio
-          const cp1 = {
-            x: (this.checkpoints[i].x + next.x) / 2,
-            y: (this.checkpoints[i].y + next.y) / 2,
-          };
-          ctx.quadraticCurveTo(
-            this.checkpoints[i].x,
-            this.checkpoints[i].y,
-            cp1.x,
-            cp1.y
-          );
-          i += 1;
+        if (i < this.checkpoints.length - 1) {
+          const next = this.checkpoints[i + 1];
+          const cpX = (curr.x + next.x) / 2;
+          const cpY = (curr.y + next.y) / 2;
+          ctx.quadraticCurveTo(curr.x, curr.y, cpX, cpY);
         } else {
-          // Último segmento recto
-          ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
-          i++;
+          ctx.lineTo(curr.x, curr.y);
         }
       }
     }
 
     ctx.stroke();
 
-    // Dibujar punta de flecha si hay al menos 2 puntos
+    // Dibujar punta de flecha
     if (this.checkpoints.length >= 2) {
       const ultimoSegmento = this.checkpoints.slice(-2);
       this.dibujarPunta(
@@ -2003,7 +2001,7 @@ class Flecha {
       );
     }
 
-    // Resaltar si está seleccionada
+    // Resaltado para selección
     if (this.seleccionado) {
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 4;
@@ -2021,13 +2019,16 @@ class Flecha {
   conectaA(objeto) {
     return this.origen === objeto || this.destino === objeto;
   }
-  // Modificar el método calcularRutaOptima
   calcularRutaOptima(x1, y1, x2, y2) {
-    const gridSize = 20; // Aumentar tamaño de celda para menos puntos
-    // const gridSize = 30; // Aumentar tamaño de celda para menos puntos
-    const maxIterations = 500; // Reducir iteraciones para evitar zig-zags
+    const gridSize = 20;
+    const maxIterations = 500;
 
-    // Nodos inicial y final
+    // Asegurarnos de que el punto final esté exactamente en el destino
+    const endNode = {
+      x: x2,
+      y: y2,
+    };
+
     const startNode = {
       x: Math.round(x1 / gridSize) * gridSize,
       y: Math.round(y1 / gridSize) * gridSize,
@@ -2037,12 +2038,6 @@ class Flecha {
     };
     startNode.f = startNode.g + startNode.h;
 
-    const endNode = {
-      x: Math.round(x2 / gridSize) * gridSize,
-      y: Math.round(y2 / gridSize) * gridSize,
-    };
-
-    // Listas abierta y cerrada
     const openList = [startNode];
     const closedList = [];
 
@@ -2052,26 +2047,18 @@ class Flecha {
     while (openList.length > 0 && iterations < maxIterations) {
       iterations++;
 
-      // Ordenar y tomar el nodo con menor f
       openList.sort((a, b) => a.f - b.f);
       currentNode = openList.shift();
 
-      // Verificar si llegamos al destino
-      if (
-        this.puntosCercanos(
-          currentNode.x,
-          currentNode.y,
-          endNode.x,
-          endNode.y,
-          gridSize
-        )
-      ) {
-        return this.reconstruirYSuavizarCamino(currentNode);
+      // Verificación más precisa de llegada al destino
+      if (this.distanciaEntrePuntos(currentNode, endNode) < gridSize) {
+        // Forzar que el último punto sea exactamente el destino
+        const camino = this.reconstruirYSuavizarCamino(currentNode);
+        camino[camino.length - 1] = { x: x2, y: y2 }; // Asegurar punto final exacto
+        return camino;
       }
 
       closedList.push(currentNode);
-
-      // Generar vecinos con preferencia a movimientos rectos
       const vecinos = this.generarVecinosOptimizados(
         currentNode,
         gridSize,
@@ -2079,7 +2066,6 @@ class Flecha {
       );
 
       for (const vecino of vecinos) {
-        // Saltar si está en lista cerrada o es obstáculo
         if (
           closedList.some((n) => n.x === vecino.x && n.y === vecino.y) ||
           this.puntoDentroDeObstaculo(vecino.x, vecino.y)
@@ -2087,11 +2073,8 @@ class Flecha {
           continue;
         }
 
-        // Calcular costos
         const gTentativo =
           currentNode.g + this.distanciaEntrePuntos(currentNode, vecino);
-
-        // Buscar en lista abierta
         const nodoAbierto = openList.find(
           (n) => n.x === vecino.x && n.y === vecino.y
         );
@@ -2114,7 +2097,7 @@ class Flecha {
       }
     }
 
-    // Fallback: línea recta si no se encontró camino
+    // Fallback: línea recta asegurando punto final exacto
     return [
       { x: x1, y: y1 },
       { x: x2, y: y2 },
@@ -2485,13 +2468,36 @@ class Flecha {
   }
 
   lineaIntersectaObjeto(x1, y1, x2, y2, objeto) {
-    // Coordenadas del objeto
+    // Coordenadas del objeto con márgenes
     const left = objeto.x;
     const right = objeto.x + objeto.ancho;
     const top = objeto.y;
     const bottom = objeto.y + objeto.alto;
 
-    // Algoritmo de Liang-Barsky para clip de líneas
+    // Caso especial para líneas perfectamente verticales
+    if (Math.abs(x1 - x2) < 0.1) {
+      // Línea vertical
+      // Verificar si la línea vertical pasa por el objeto
+      if (x1 >= left && x1 <= right) {
+        const minY = Math.min(y1, y2);
+        const maxY = Math.max(y1, y2);
+        return !(maxY < top || minY > bottom);
+      }
+      return false;
+    }
+
+    // Caso especial para líneas perfectamente horizontales
+    if (Math.abs(y1 - y2) < 0.1) {
+      // Línea horizontal
+      if (y1 >= top && y1 <= bottom) {
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        return !(maxX < left || minX > right);
+      }
+      return false;
+    }
+
+    // Algoritmo de Liang-Barsky para líneas diagonales
     let t0 = 0;
     let t1 = 1;
     const dx = x2 - x1;
@@ -2502,7 +2508,7 @@ class Flecha {
 
     for (let i = 0; i < 4; i++) {
       if (p[i] === 0) {
-        if (q[i] < 0) return false; // Línea paralela y fuera del borde
+        if (q[i] < 0) return false;
       } else {
         const t = q[i] / p[i];
         if (p[i] < 0) {
@@ -2515,7 +2521,7 @@ class Flecha {
       }
     }
 
-    return t0 < t1; // Hay intersección si t0 < t1
+    return t0 < t1;
   }
 
   // En la clase Flecha, modificar el método puntoDentroDeObstaculo
