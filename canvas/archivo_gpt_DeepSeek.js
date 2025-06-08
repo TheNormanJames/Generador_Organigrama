@@ -7,6 +7,7 @@ class MiniFigma {
     this.setupCanvas();
 
     this.initFormatButtons();
+    this.necesitaRedibujar = true;
 
     this.state = {
       objetos: [],
@@ -34,6 +35,7 @@ class MiniFigma {
 
     this.initUIElements();
     this.setupEventListeners();
+    this.iniciarRenderCiclo();
     this.dibujar();
   }
   initFormatButtons() {
@@ -58,6 +60,16 @@ class MiniFigma {
         }
       });
     });
+  }
+  iniciarRenderCiclo() {
+    const loop = () => {
+      if (this.necesitaRedibujar) {
+        this.dibujar(); // tu método original de dibujar TODO
+        this.necesitaRedibujar = false;
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
   }
 
   aplicarFormato(tipo) {
@@ -471,20 +483,8 @@ class MiniFigma {
     }
 
     this.guardarHistorial();
-    this.dibujar();
-  }
-
-  crearTextoPersonalizado(
-    texto,
-    fontSize,
-    color,
-    alineacion = 'left',
-    ancho = 300
-  ) {
-    const nuevoTexto = new Texto(150, 150, texto, fontSize, color, ancho);
-    nuevoTexto.alineacion = alineacion;
-    this.state.objetos.push(nuevoTexto);
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Métodos de manejo de eventos
@@ -604,7 +604,8 @@ class MiniFigma {
         Math.min(nuevoRadio, state.maxRadioCirculo),
         state.minRadioCirculo
       );
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
       return;
     }
 
@@ -616,7 +617,9 @@ class MiniFigma {
       // Actualizar ancho y recalcular posiciones
       state.componenteRedimensionando.ajustarPosiciones();
 
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
+
       return;
     }
 
@@ -627,7 +630,8 @@ class MiniFigma {
       state.offsetCanvas.x += dx;
       state.offsetCanvas.y += dy;
       state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
       return;
     }
 
@@ -654,8 +658,17 @@ class MiniFigma {
             obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
           }
         }
+        this.state.objetos.forEach((otro) => {
+          if (
+            otro instanceof Flecha &&
+            (otro.origen === obj || otro.destino === obj)
+          ) {
+            otro.actualizarCheckpoints();
+          }
+        });
       });
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
     }
   }
 
@@ -675,7 +688,8 @@ class MiniFigma {
     state.offsets.clear();
 
     this.actualizarCursor(x, y);
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   handleDoubleClick(e) {
@@ -728,7 +742,8 @@ class MiniFigma {
     state.offsetCanvas.y -= my * nuevoZoom - my * state.zoom;
     state.zoom = nuevoZoom;
 
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   handleKeyDown(e) {
@@ -743,7 +758,8 @@ class MiniFigma {
         state.objetoEditando.texto = this.editorTexto.value;
         this.editorTexto.style.display = 'none';
         state.objetoEditando = null;
-        this.dibujar();
+        // this.dibujar();
+        this.necesitaRedibujar = true;
       }
     }
     if (e.code === 'Space' && !state.modoPanActivo) {
@@ -804,7 +820,8 @@ class MiniFigma {
 
       this.editorTexto.style.display = 'none';
       this.state.objetoEditando = null;
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
     };
 
     // Configurar evento input para actualización en tiempo real
@@ -823,7 +840,8 @@ class MiniFigma {
           this.ajustarComponentesDebajo(padre, diferencia, this.ctx);
         }
       }
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
     };
   }
   ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
@@ -898,7 +916,8 @@ class MiniFigma {
       const img = new Image();
       img.onload = () => {
         circulo.imagen = img;
-        this.dibujar();
+        // this.dibujar();
+        this.necesitaRedibujar = true;
         this.ocultarPopup();
       };
       img.src = url;
@@ -913,7 +932,8 @@ class MiniFigma {
           const img = new Image();
           img.onload = () => {
             circulo.imagen = img;
-            this.dibujar();
+            // this.dibujar();
+            this.necesitaRedibujar = true;
             this.ocultarPopup();
           };
           img.src = reader.result;
@@ -940,7 +960,8 @@ class MiniFigma {
         ? this.state.objetos.push(obj)
         : this.state.objetos.unshift(obj);
     });
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   duplicar() {
@@ -962,7 +983,8 @@ class MiniFigma {
       if (copia) this.state.objetos.push(copia);
     });
     this.guardarHistorial();
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Nuevo método para verificar si un punto está cerca de una flecha
@@ -1034,7 +1056,8 @@ class MiniFigma {
     });
 
     this.guardarHistorial();
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Métodos de historial
@@ -1163,6 +1186,7 @@ class MiniFigma {
 
     this.state.objetos = objetosFinales;
     this.dibujar();
+    // this.necesitaRedibujar = true;
   }
 
   // Métodos de importación/exportación
@@ -1975,9 +1999,18 @@ class Flecha {
     this.color = color;
     this.margenSeguridad = 15; // Espacio alrededor de los objetos
     this.checkpoints = []; // Puntos intermedios para rodear obstáculos
+    this.actualizarCheckpoints(); // inicial
+  }
+  actualizarCheckpoints() {
+    // Código que calcula los puntos del path (checkpoints) aquí...
+    this.checkpoints = [
+      { x: this.origen.x, y: this.origen.y },
+      { x: this.destino.x, y: this.destino.y },
+    ];
   }
 
   dibujar(ctx) {
+    if (!this.checkpoints.length) this.actualizarCheckpoints();
     // Recalcular siempre el camino para asegurar que esté actualizado
     const { x: x1, y: y1 } = this.calcularPuntoConexion(
       this.origen,
@@ -2007,24 +2040,8 @@ class Flecha {
     ctx.beginPath();
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
 
-    if (this.checkpoints.length === 2) {
-      // Línea recta simple
-      ctx.lineTo(this.checkpoints[1].x, this.checkpoints[1].y);
-    } else {
-      // Curvas Bézier suavizadas
-      for (let i = 1; i < this.checkpoints.length; i++) {
-        const prev = this.checkpoints[i - 1];
-        const curr = this.checkpoints[i];
-
-        if (i < this.checkpoints.length - 1) {
-          const next = this.checkpoints[i + 1];
-          const cpX = (curr.x + next.x) / 2;
-          const cpY = (curr.y + next.y) / 2;
-          ctx.quadraticCurveTo(curr.x, curr.y, cpX, cpY);
-        } else {
-          ctx.lineTo(curr.x, curr.y);
-        }
-      }
+    for (let i = 1; i < this.checkpoints.length; i++) {
+      ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
     }
 
     ctx.stroke();
