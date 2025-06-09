@@ -7,6 +7,7 @@ class MiniFigma {
     this.setupCanvas();
 
     this.initFormatButtons();
+    this.necesitaRedibujar = true;
 
     this.state = {
       objetos: [],
@@ -34,6 +35,7 @@ class MiniFigma {
 
     this.initUIElements();
     this.setupEventListeners();
+    this.iniciarRenderCiclo();
     this.dibujar();
   }
   initFormatButtons() {
@@ -58,6 +60,16 @@ class MiniFigma {
         }
       });
     });
+  }
+  iniciarRenderCiclo() {
+    const loop = () => {
+      if (this.necesitaRedibujar) {
+        this.dibujar(); // tu método original de dibujar TODO
+        this.necesitaRedibujar = false;
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
   }
 
   aplicarFormato(tipo) {
@@ -471,20 +483,8 @@ class MiniFigma {
     }
 
     this.guardarHistorial();
-    this.dibujar();
-  }
-
-  crearTextoPersonalizado(
-    texto,
-    fontSize,
-    color,
-    alineacion = "left",
-    ancho = 300
-  ) {
-    const nuevoTexto = new Texto(150, 150, texto, fontSize, color, ancho);
-    nuevoTexto.alineacion = alineacion;
-    this.state.objetos.push(nuevoTexto);
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Métodos de manejo de eventos
@@ -604,7 +604,8 @@ class MiniFigma {
         Math.min(nuevoRadio, state.maxRadioCirculo),
         state.minRadioCirculo
       );
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
       return;
     }
 
@@ -616,7 +617,9 @@ class MiniFigma {
       // Actualizar ancho y recalcular posiciones
       state.componenteRedimensionando.ajustarPosiciones();
 
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
+
       return;
     }
 
@@ -627,7 +630,8 @@ class MiniFigma {
       state.offsetCanvas.x += dx;
       state.offsetCanvas.y += dy;
       state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
       return;
     }
 
@@ -654,8 +658,17 @@ class MiniFigma {
             obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
           }
         }
+        this.state.objetos.forEach((otro) => {
+          if (
+            otro instanceof Flecha &&
+            (otro.origen === obj || otro.destino === obj)
+          ) {
+            otro.actualizarCheckpoints();
+          }
+        });
       });
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
     }
   }
 
@@ -675,7 +688,8 @@ class MiniFigma {
     state.offsets.clear();
 
     this.actualizarCursor(x, y);
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   handleDoubleClick(e) {
@@ -728,7 +742,8 @@ class MiniFigma {
     state.offsetCanvas.y -= my * nuevoZoom - my * state.zoom;
     state.zoom = nuevoZoom;
 
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   handleKeyDown(e) {
@@ -743,7 +758,8 @@ class MiniFigma {
         state.objetoEditando.texto = this.editorTexto.value;
         this.editorTexto.style.display = "none";
         state.objetoEditando = null;
-        this.dibujar();
+        // this.dibujar();
+        this.necesitaRedibujar = true;
       }
     }
     if (e.code === "Space" && !state.modoPanActivo) {
@@ -777,6 +793,7 @@ class MiniFigma {
   }
 
   // Métodos de UI
+  // En la clase MiniFigma, modificar el método mostrarEditorTexto
   mostrarEditorTexto(textoObj, pantallaX, pantallaY) {
     this.editorTexto.value = textoObj.texto;
     this.editorTexto.style.left = pantallaX + "px";
@@ -791,33 +808,41 @@ class MiniFigma {
 
     this.editorTexto.onblur = () => {
       textoObj.texto = this.editorTexto.value;
+
+      // Forzar actualización de dimensiones
+      textoObj.actualizarDimensiones(this.ctx);
+
       const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
-
       if (padre) {
-        const ctx = this.ctx;
-        const alturaAnterior = padre.calcularAltoTotal(ctx);
-        padre.ajustarPosiciones(ctx);
-        const nuevaAltura = padre.calcularAltoTotal(ctx);
-        const diferencia = nuevaAltura - alturaAnterior;
-
-        if (diferencia !== 0) {
-          this.ajustarComponentesDebajo(padre, diferencia, ctx);
-        }
+        padre.ajustarPosiciones(this.ctx);
+        this.ajustarComponentesDebajo(padre, 0, this.ctx); // Forzar reflow
       }
 
       this.editorTexto.style.display = "none";
       this.state.objetoEditando = null;
-      this.dibujar();
+      // this.dibujar();
+      this.necesitaRedibujar = true;
     };
-    this.editorTexto.focus();
 
-    // Actualizar estado de botones al mostrar editor
-    this.actualizarEstadoBotones();
+    // Configurar evento input para actualización en tiempo real
+    this.editorTexto.oninput = () => {
+      textoObj.texto = this.editorTexto.value;
+      textoObj.actualizarDimensiones(this.ctx);
 
-    // Configurar eventos para actualizar botones al seleccionar texto
-    this.editorTexto.addEventListener("select", () =>
-      this.actualizarEstadoBotones()
-    );
+      const padre = this.state.objetos.find((c) => c.hijos?.includes(textoObj));
+      if (padre) {
+        const alturaAnterior = padre.calcularAltoTotal(this.ctx);
+        padre.ajustarPosiciones(this.ctx);
+        const nuevaAltura = padre.calcularAltoTotal(this.ctx);
+        const diferencia = nuevaAltura - alturaAnterior;
+
+        if (diferencia !== 0) {
+          this.ajustarComponentesDebajo(padre, diferencia, this.ctx);
+        }
+      }
+      // this.dibujar();
+      this.necesitaRedibujar = true;
+    };
   }
   ajustarComponentesDebajo(componenteModificado, deltaY, ctx) {
     if (deltaY === 0) return;
@@ -891,7 +916,8 @@ class MiniFigma {
       const img = new Image();
       img.onload = () => {
         circulo.imagen = img;
-        this.dibujar();
+        // this.dibujar();
+        this.necesitaRedibujar = true;
         this.ocultarPopup();
       };
       img.src = url;
@@ -906,7 +932,8 @@ class MiniFigma {
           const img = new Image();
           img.onload = () => {
             circulo.imagen = img;
-            this.dibujar();
+            // this.dibujar();
+            this.necesitaRedibujar = true;
             this.ocultarPopup();
           };
           img.src = reader.result;
@@ -933,7 +960,8 @@ class MiniFigma {
         ? this.state.objetos.push(obj)
         : this.state.objetos.unshift(obj);
     });
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   duplicar() {
@@ -955,7 +983,8 @@ class MiniFigma {
       if (copia) this.state.objetos.push(copia);
     });
     this.guardarHistorial();
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Nuevo método para verificar si un punto está cerca de una flecha
@@ -1027,7 +1056,8 @@ class MiniFigma {
     });
 
     this.guardarHistorial();
-    this.dibujar();
+    // this.dibujar();
+    this.necesitaRedibujar = true;
   }
 
   // Métodos de historial
@@ -1162,6 +1192,7 @@ class MiniFigma {
 
     this.state.objetos = objetosFinales;
     this.dibujar();
+    // this.necesitaRedibujar = true;
   }
 
   // Métodos de importación/exportación
@@ -1321,21 +1352,21 @@ class MiniFigma {
             );
             objetosCargados.push(nuevoTexto);
             if (objData.tempId) idMap.set(objData.tempId, nuevoTexto);
-            // } else if (objData.type === "ComponenteTexto") {
-            //   // Crear los hijos primero
-            //   const hijos = objData.hijos.map((hijoData) => {
-            //     const hijo = new Texto(
-            //       hijoData.x,
-            //       hijoData.y,
-            //       hijoData.texto,
-            //       hijoData.fontSize,
-            //       hijoData.color,
-            //       hijoData.ancho,
-            //       hijoData.alineacion
-            //     );
-            //     if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
-            //     return hijo;
-            //   });
+          } else if (objData.type === "ComponenteTexto") {
+            // Crear los hijos primero
+            const hijos = objData.hijos.map((hijoData) => {
+              const hijo = new Texto(
+                hijoData.x,
+                hijoData.y,
+                hijoData.texto,
+                hijoData.fontSize,
+                hijoData.color,
+                hijoData.ancho,
+                hijoData.alineacion
+              );
+              if (hijoData.tempId) idMap.set(hijoData.tempId, hijo);
+              return hijo;
+            });
 
             //   const nuevoComponente = new ComponenteTexto(objData.x, objData.y);
             //   nuevoComponente.hijos = hijos;
@@ -1376,6 +1407,7 @@ class MiniFigma {
             objetosCargados.push(nuevoComponente);
             if (objData.tempId) idMap.set(objData.tempId, nuevoComponente);
           } else if (objData.type === "Flecha") {
+            // Guardar datos de flecha para procesar después
             objetosCargados.push(objData);
           }
         }
@@ -1516,21 +1548,28 @@ class Componente {
 
   ajustarPosiciones(ctx) {
     let yActual = this.y;
+    let maxAncho = 0;
 
     this.hijos.forEach((hijo, index) => {
-      // Usar el contexto para calcular la altura exacta
-      const alturaTexto = hijo.actualizarAlturaTexto(ctx);
+      // Actualizar dimensiones del hijo
+      hijo.actualizarDimensiones(ctx);
 
       hijo.x = this.x;
       hijo.y = yActual;
-      hijo.ancho = this.ancho;
+      hijo.ancho = this.ancho; // Mantener el ancho del componente
 
-      yActual += alturaTexto;
+      // Actualizar ancho máximo
+      if (hijo.ancho > maxAncho) maxAncho = hijo.ancho;
+
+      yActual += hijo.altura;
 
       if (index < this.hijos.length - 1) {
         yActual += this.espaciado;
       }
     });
+
+    // Actualizar ancho del componente si es necesario
+    this.ancho = Math.max(this.ancho, maxAncho);
 
     return yActual - this.y; // Retornar altura total
   }
@@ -1538,7 +1577,8 @@ class Componente {
     let alturaTotal = 0;
 
     this.hijos.forEach((hijo, index) => {
-      alturaTotal += hijo.actualizarAlturaTexto(ctx);
+      hijo.actualizarDimensiones(ctx);
+      alturaTotal += hijo.altura;
 
       if (index < this.hijos.length - 1) {
         alturaTotal += this.espaciado;
@@ -1549,31 +1589,34 @@ class Componente {
   }
 
   dibujar(ctx) {
+    // Actualizar dimensiones primero
+    const alturaTotal = this.calcularAltoTotal(ctx);
+
+    // Dibujar hijos
     this.hijos.forEach((hijo) => hijo.dibujar(ctx));
 
+    // Dibujar bordes de selección
     if (this.seleccionado) {
-      const ultimoHijo = this.hijos[this.hijos.length - 1];
-      const lineas = ultimoHijo.texto.split("\n").length || 1;
-      const altoTotal =
-        ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
-
       ctx.strokeStyle = "#00000088";
       ctx.lineWidth = 2;
-      ctx.strokeRect(this.x - 10, this.y - 10, this.ancho + 20, altoTotal + 20);
+      ctx.strokeRect(
+        this.x - 10,
+        this.y - 10,
+        this.ancho + 20,
+        alturaTotal + 20
+      );
     }
   }
 
   contienePunto(x, y) {
-    const ultimoHijo = this.hijos[this.hijos.length - 1];
-    const lineas = ultimoHijo.texto.split("\n").length || 1;
-    const altoTotal =
-      ultimoHijo.y - this.y + (ultimoHijo.fontSize + 4) * lineas + 20;
+    // Usar altura calculada en lugar de estimada
+    const alturaTotal = this.calcularAltoTotal(MiniFigma.instance.ctx);
 
     return (
       x > this.x - 10 &&
       x < this.x + this.ancho + 10 &&
       y > this.y - 10 &&
-      y < this.y + altoTotal + 10
+      y < this.y + alturaTotal + 10
     );
   }
 
@@ -1721,10 +1764,7 @@ class Texto {
     fontSize = 16,
     color = "black",
     ancho = 200,
-    alineacion = "left",
-    bold = false,
-    italic = false,
-    formatos = []
+    alineacion = "left"
   ) {
     this.x = x;
     this.y = y;
@@ -1737,6 +1777,27 @@ class Texto {
     this.bold = bold;
     this.italic = italic;
     this.formatos = formatos; // Array para guardar rangos con formato
+  }
+
+  calcularAltura(ctx) {
+    const lineas = this.dividirTextoEnLineas(ctx);
+    return lineas.length * (this.fontSize + 4); // +4 para espacio entre líneas
+  }
+
+  actualizarDimensiones(ctx) {
+    this.altura = this.calcularAltura(ctx);
+
+    // Calcular ancho máximo de línea
+    if (ctx) {
+      ctx.font = `${this.fontSize}px Arial`;
+      const lineas = this.dividirTextoEnLineas(ctx);
+      let maxAncho = 0;
+      lineas.forEach((linea) => {
+        const anchoLinea = ctx.measureText(linea).width;
+        if (anchoLinea > maxAncho) maxAncho = anchoLinea;
+      });
+      this.ancho = Math.max(this.ancho, maxAncho);
+    }
   }
 
   aplicarFormato(inicio, fin, tipo) {
@@ -1834,6 +1895,7 @@ class Texto {
   }
 
   dibujar(ctx) {
+    this.actualizarDimensiones(ctx);
     ctx.textAlign = this.alineacion;
     const lineas = this.dividirTextoEnLineas(ctx);
     let currentY = this.y;
@@ -1874,10 +1936,8 @@ class Texto {
 
         // Configurar estilo
         let fontStyle = "";
-        if (this.bold || formatos.some((f) => f.tipo === "bold"))
-          fontStyle += "bold ";
-        if (this.italic || formatos.some((f) => f.tipo === "italic"))
-          fontStyle += "italic ";
+        if (formatos.some((f) => f.tipo === "bold")) fontStyle += "bold ";
+        if (formatos.some((f) => f.tipo === "italic")) fontStyle += "italic ";
         fontStyle += `${this.fontSize}px Arial`;
 
         ctx.font = fontStyle;
@@ -1942,9 +2002,19 @@ class Flecha {
     this.color = color;
     this.margenSeguridad = 15; // Espacio alrededor de los objetos
     this.checkpoints = []; // Puntos intermedios para rodear obstáculos
+    this.actualizarCheckpoints(); // inicial
+  }
+  actualizarCheckpoints() {
+    // Código que calcula los puntos del path (checkpoints) aquí...
+    this.checkpoints = [
+      { x: this.origen.x, y: this.origen.y },
+      { x: this.destino.x, y: this.destino.y },
+    ];
   }
 
   dibujar(ctx) {
+    if (!this.checkpoints.length) this.actualizarCheckpoints();
+    // Recalcular siempre el camino para asegurar que esté actualizado
     const { x: x1, y: y1 } = this.calcularPuntoConexion(
       this.origen,
       this.destino
@@ -1956,14 +2026,27 @@ class Flecha {
 
     this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2);
 
+    // Asegurarnos de que tenemos al menos 2 puntos
+    if (this.checkpoints.length < 2) {
+      this.checkpoints = [
+        { x: x1, y: y1 },
+        { x: x2, y: y2 },
+      ];
+    } else {
+      // Forzar que el último punto sea exactamente el destino
+      this.checkpoints[this.checkpoints.length - 1] = { x: x2, y: y2 };
+    }
+
     // Dibujar la flecha
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.checkpoints[0].x, this.checkpoints[0].y);
+
     for (let i = 1; i < this.checkpoints.length; i++) {
       ctx.lineTo(this.checkpoints[i].x, this.checkpoints[i].y);
     }
+
     ctx.stroke();
 
     // Dibujar punta de flecha
@@ -1978,7 +2061,7 @@ class Flecha {
       );
     }
 
-    // Resaltar si está seleccionada
+    // Resaltado para selección
     if (this.seleccionado) {
       ctx.strokeStyle = "#ff0000";
       ctx.lineWidth = 4;
@@ -1997,62 +2080,245 @@ class Flecha {
     return this.origen === objeto || this.destino === objeto;
   }
   calcularRutaOptima(x1, y1, x2, y2) {
-    const ruta = [{ x: x1, y: y1 }];
-    let puntoActual = { x: x1, y: y1 };
-    let intentos = 0;
-    const maxIntentos = 50; // Prevención de bucles infinitos
+    const gridSize = 20;
+    const maxIterations = 500;
 
-    while (
-      intentos < maxIntentos &&
-      !this.puntoCercaDeDestino(puntoActual, x2, y2)
-    ) {
-      // Detectar obstáculos en el camino directo al destino
-      const obstaculos = this.detectarObstaculos(
-        puntoActual.x,
-        puntoActual.y,
-        x2,
-        y2
-      );
+    // Asegurarnos de que el punto final esté exactamente en el destino
+    const endNode = {
+      x: x2,
+      y: y2,
+    };
 
-      if (obstaculos.length === 0) {
-        // Camino libre, ir directo al destino
-        ruta.push({ x: x2, y: y2 });
-        break;
+    const startNode = {
+      x: Math.round(x1 / gridSize) * gridSize,
+      y: Math.round(y1 / gridSize) * gridSize,
+      g: 0,
+      h: this.heuristic(x1, y1, x2, y2),
+      parent: null,
+    };
+    startNode.f = startNode.g + startNode.h;
+
+    const openList = [startNode];
+    const closedList = [];
+
+    let currentNode = null;
+    let iterations = 0;
+
+    while (openList.length > 0 && iterations < maxIterations) {
+      iterations++;
+
+      openList.sort((a, b) => a.f - b.f);
+      currentNode = openList.shift();
+
+      // Verificación más precisa de llegada al destino
+      if (this.distanciaEntrePuntos(currentNode, endNode) < gridSize) {
+        // Forzar que el último punto sea exactamente el destino
+        const camino = this.reconstruirYSuavizarCamino(currentNode);
+        camino[camino.length - 1] = { x: x2, y: y2 }; // Asegurar punto final exacto
+        return camino;
       }
 
-      // Ordenar obstáculos por proximidad
-      obstaculos.sort((a, b) => {
-        const distA = this.distanciaEntrePuntos(puntoActual, a);
-        const distB = this.distanciaEntrePuntos(puntoActual, b);
-        return distA - distB;
-      });
-
-      const obstaculoMasCercano = obstaculos[0];
-
-      // Calcular puntos para rodear el obstáculo
-      const puntosRodeo = this.calcularPuntosRodeo(
-        puntoActual,
-        obstaculoMasCercano,
-        x2,
-        y2
+      closedList.push(currentNode);
+      const vecinos = this.generarVecinosOptimizados(
+        currentNode,
+        gridSize,
+        endNode
       );
 
-      if (puntosRodeo.length === 0) {
-        // No se encontró forma de rodear, avanzar hacia el destino
-        ruta.push({ x: x2, y: y2 });
-        break;
+      for (const vecino of vecinos) {
+        if (
+          closedList.some((n) => n.x === vecino.x && n.y === vecino.y) ||
+          this.puntoDentroDeObstaculo(vecino.x, vecino.y)
+        ) {
+          continue;
+        }
+
+        const gTentativo =
+          currentNode.g + this.distanciaEntrePuntos(currentNode, vecino);
+        const nodoAbierto = openList.find(
+          (n) => n.x === vecino.x && n.y === vecino.y
+        );
+
+        if (!nodoAbierto || gTentativo < nodoAbierto.g) {
+          const nuevoVecino = nodoAbierto || { ...vecino, parent: currentNode };
+          nuevoVecino.g = gTentativo;
+          nuevoVecino.h = this.heuristic(
+            nuevoVecino.x,
+            nuevoVecino.y,
+            endNode.x,
+            endNode.y
+          );
+          nuevoVecino.f = nuevoVecino.g + nuevoVecino.h;
+
+          if (!nodoAbierto) {
+            openList.push(nuevoVecino);
+          }
+        }
       }
-
-      // Agregar puntos de rodeo a la ruta
-      ruta.push(...puntosRodeo);
-
-      // Actualizar punto actual al último punto de rodeo
-      puntoActual = puntosRodeo[puntosRodeo.length - 1];
-
-      intentos++;
     }
 
-    return ruta;
+    // Fallback: línea recta asegurando punto final exacto
+    return [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
+    ];
+  }
+  // Función heurística (distancia euclidiana)
+  heuristic(x1, y1, x2, y2) {
+    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+  }
+
+  // Nuevo método para generar vecinos con preferencia a movimientos rectos
+  generarVecinosOptimizados(nodo, gridSize, endNode) {
+    const direcciones = [];
+    const dx = endNode.x - nodo.x;
+    const dy = endNode.y - nodo.y;
+
+    // Priorizar dirección hacia el destino
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direcciones.push(
+        { dx: Math.sign(dx) * gridSize, dy: 0, bonus: -10 }, // Movimiento principal
+        { dx: 0, dy: Math.sign(dy) * gridSize, bonus: -5 }, // Movimiento secundario
+        { dx: -Math.sign(dx) * gridSize, dy: 0 }, // Movimiento opuesto
+        { dx: 0, dy: -Math.sign(dy) * gridSize }
+      );
+    } else {
+      direcciones.push(
+        { dx: 0, dy: Math.sign(dy) * gridSize, bonus: -10 },
+        { dx: Math.sign(dx) * gridSize, dy: 0, bonus: -5 },
+        { dx: 0, dy: -Math.sign(dy) * gridSize },
+        { dx: -Math.sign(dx) * gridSize, dy: 0 }
+      );
+    }
+
+    // Añadir diagonales con menor prioridad
+    direcciones.push(
+      { dx: Math.sign(dx) * gridSize, dy: Math.sign(dy) * gridSize },
+      { dx: Math.sign(dx) * gridSize, dy: -Math.sign(dy) * gridSize },
+      { dx: -Math.sign(dx) * gridSize, dy: Math.sign(dy) * gridSize },
+      { dx: -Math.sign(dx) * gridSize, dy: -Math.sign(dy) * gridSize }
+    );
+
+    return direcciones.map((dir) => ({
+      x: nodo.x + dir.dx,
+      y: nodo.y + dir.dy,
+      bonus: dir.bonus || 0,
+    }));
+  }
+  // Método mejorado para reconstruir y suavizar el camino
+  reconstruirYSuavizarCamino(nodoFinal) {
+    const camino = [];
+    let currentNode = nodoFinal;
+
+    // Reconstruir camino
+    while (currentNode) {
+      camino.unshift({ x: currentNode.x, y: currentNode.y });
+      currentNode = currentNode.parent;
+    }
+
+    // Simplificar eliminando nodos innecesarios
+    const simplificado = [camino[0]];
+    for (let i = 1; i < camino.length - 1; i++) {
+      const prev = simplificado[simplificado.length - 1];
+      const current = camino[i];
+      const next = camino[i + 1];
+
+      // Calcular ángulos
+      const ang1 = Math.atan2(current.y - prev.y, current.x - prev.x);
+      const ang2 = Math.atan2(next.y - current.y, next.x - current.x);
+
+      // Si el cambio de dirección es significativo (> 20 grados), mantener el punto
+      if (Math.abs(ang1 - ang2) > 0.35) {
+        // ~20 grados en radianes
+        simplificado.push(current);
+      }
+    }
+    simplificado.push(camino[camino.length - 1]);
+
+    return simplificado;
+  }
+  // generarVecinos(nodo, gridSize, endNode) {
+  //   const vecinos = [];
+  //   const directions = [
+  //     { dx: 0, dy: -gridSize }, // arriba
+  //     { dx: gridSize, dy: 0 }, // derecha
+  //     { dx: 0, dy: gridSize }, // abajo
+  //     { dx: -gridSize, dy: 0 }, // izquierda
+  //     { dx: gridSize, dy: -gridSize }, // arriba-derecha
+  //     { dx: gridSize, dy: gridSize }, // abajo-derecha
+  //     { dx: -gridSize, dy: gridSize }, // abajo-izquierda
+  //     { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
+  //   ];
+
+  //   for (const dir of directions) {
+  //     const x = nodo.x + dir.dx;
+  //     const y = nodo.y + dir.dy;
+
+  //     // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
+  //     const enLineaRecta =
+  //       (x === nodo.x && x === endNode.x) ||
+  //       (y === nodo.y && y === endNode.y) ||
+  //       Math.abs(
+  //         (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
+  //       ) < 0.1;
+
+  //     vecinos.push({
+  //       x,
+  //       y,
+  //       bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
+  //     });
+  //   }
+
+  //   return vecinos;
+  // }
+  // Reconstruir el camino desde el nodo final
+  reconstruirCamino(nodoFinal) {
+    const camino = [];
+    let currentNode = nodoFinal;
+
+    while (currentNode) {
+      camino.unshift({ x: currentNode.x, y: currentNode.y });
+      currentNode = currentNode.parent;
+    }
+
+    // Simplificar el camino eliminando nodos redundantes
+    return this.simplificarCamino(camino);
+  }
+
+  // Simplificar el camino eliminando puntos innecesarios
+  simplificarCamino(camino) {
+    if (camino.length <= 2) return camino;
+
+    const simplified = [camino[0]];
+    let lastDirection = null;
+
+    for (let i = 1; i < camino.length - 1; i++) {
+      const prev = simplified[simplified.length - 1];
+      const current = camino[i];
+      const next = camino[i + 1];
+
+      // Calcular direcciones
+      const dirCurrent = {
+        dx: current.x - prev.x,
+        dy: current.y - prev.y,
+      };
+
+      const dirNext = {
+        dx: next.x - current.x,
+        dy: next.y - current.y,
+      };
+
+      // Si la dirección cambia, mantener el punto actual
+      if (dirCurrent.dx !== dirNext.dx || dirCurrent.dy !== dirNext.dy) {
+        simplified.push(current);
+      }
+    }
+
+    simplified.push(camino[camino.length - 1]);
+    return simplified;
+  }
+  puntosCercanos(x1, y1, x2, y2, umbral) {
+    return Math.abs(x1 - x2) < umbral && Math.abs(y1 - y2) < umbral;
   }
 
   calcularPuntosRodeo(puntoActual, obstaculo, xDest, yDest) {
@@ -2117,6 +2383,43 @@ class Flecha {
 
     return puntos;
   }
+
+  // Generar vecinos (8 direcciones)
+  generarVecinos(nodo, gridSize, endNode) {
+    const vecinos = [];
+    const directions = [
+      { dx: 0, dy: -gridSize }, // arriba
+      { dx: gridSize, dy: 0 }, // derecha
+      { dx: 0, dy: gridSize }, // abajo
+      { dx: -gridSize, dy: 0 }, // izquierda
+      { dx: gridSize, dy: -gridSize }, // arriba-derecha
+      { dx: gridSize, dy: gridSize }, // abajo-derecha
+      { dx: -gridSize, dy: gridSize }, // abajo-izquierda
+      { dx: -gridSize, dy: -gridSize }, // arriba-izquierda
+    ];
+
+    for (const dir of directions) {
+      const x = nodo.x + dir.dx;
+      const y = nodo.y + dir.dy;
+
+      // Pequeña optimización: si el vecino está en línea recta con el destino, darle prioridad
+      const enLineaRecta =
+        (x === nodo.x && x === endNode.x) ||
+        (y === nodo.y && y === endNode.y) ||
+        Math.abs(
+          (y - nodo.y) / (x - nodo.x) - (endNode.y - y) / (endNode.x - x)
+        ) < 0.1;
+
+      vecinos.push({
+        x,
+        y,
+        bonus: enLineaRecta ? -5 : 0, // Pequeño bonus para nodos en línea recta con el destino
+      });
+    }
+
+    return vecinos;
+  }
+
   calcularPuntoConexion(objeto, otroObjeto) {
     const dx = otroObjeto.x - objeto.x;
     const dy = otroObjeto.y - objeto.y;
@@ -2225,13 +2528,36 @@ class Flecha {
   }
 
   lineaIntersectaObjeto(x1, y1, x2, y2, objeto) {
-    // Coordenadas del objeto
+    // Coordenadas del objeto con márgenes
     const left = objeto.x;
     const right = objeto.x + objeto.ancho;
     const top = objeto.y;
     const bottom = objeto.y + objeto.alto;
 
-    // Algoritmo de Liang-Barsky para clip de líneas
+    // Caso especial para líneas perfectamente verticales
+    if (Math.abs(x1 - x2) < 0.1) {
+      // Línea vertical
+      // Verificar si la línea vertical pasa por el objeto
+      if (x1 >= left && x1 <= right) {
+        const minY = Math.min(y1, y2);
+        const maxY = Math.max(y1, y2);
+        return !(maxY < top || minY > bottom);
+      }
+      return false;
+    }
+
+    // Caso especial para líneas perfectamente horizontales
+    if (Math.abs(y1 - y2) < 0.1) {
+      // Línea horizontal
+      if (y1 >= top && y1 <= bottom) {
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        return !(maxX < left || minX > right);
+      }
+      return false;
+    }
+
+    // Algoritmo de Liang-Barsky para líneas diagonales
     let t0 = 0;
     let t1 = 1;
     const dx = x2 - x1;
@@ -2242,7 +2568,7 @@ class Flecha {
 
     for (let i = 0; i < 4; i++) {
       if (p[i] === 0) {
-        if (q[i] < 0) return false; // Línea paralela y fuera del borde
+        if (q[i] < 0) return false;
       } else {
         const t = q[i] / p[i];
         if (p[i] < 0) {
@@ -2255,45 +2581,60 @@ class Flecha {
       }
     }
 
-    return t0 < t1; // Hay intersección si t0 < t1
+    return t0 < t1;
   }
 
   puntoDentroDeObstaculo(x, y) {
+    const margen = this.margenSeguridad * 1.5;
+
+    // Verificar objetos conectados primero
+    if (this.origen instanceof Circulo) {
+      if (
+        Math.hypot(x - this.origen.x, y - this.origen.y) <
+        this.origen.radio + margen
+      ) {
+        return false;
+      }
+    }
+
+    if (this.destino instanceof Circulo) {
+      if (
+        Math.hypot(x - this.destino.x, y - this.destino.y) <
+        this.destino.radio + margen
+      ) {
+        return false;
+      }
+    }
+
+    // Verificar otros obstáculos
     for (const obj of MiniFigma.instance.state.objetos) {
       if (obj === this.origen || obj === this.destino) continue;
 
       if (obj instanceof Circulo) {
-        if (
-          Math.hypot(x - obj.x, y - obj.y) <
-          obj.radio + this.margenSeguridad
-        ) {
+        if (Math.hypot(x - obj.x, y - obj.y) < obj.radio + margen) {
           return true;
         }
-      } else if (obj instanceof Texto || obj instanceof Componente) {
+      } else {
         let ox, oy, ancho, alto;
 
         if (obj instanceof Texto) {
-          const lineas = obj.texto.split("\n").length || 1;
-          ox = obj.x - this.margenSeguridad;
-          oy = obj.y - obj.fontSize - this.margenSeguridad;
-          ancho = obj.ancho + this.margenSeguridad * 2;
-          alto = (obj.fontSize + 4) * lineas + this.margenSeguridad * 2;
-        } else {
-          // Componente
-          const ultimoHijo = obj.hijos[obj.hijos.length - 1];
-          const lineas = ultimoHijo.texto.split("\n").length || 1;
-          ox = obj.x - this.margenSeguridad;
-          oy = obj.y - this.margenSeguridad;
-          ancho = obj.ancho + this.margenSeguridad * 2;
-          alto =
-            ultimoHijo.y -
-            obj.y +
-            (ultimoHijo.fontSize + 4) * lineas +
-            this.margenSeguridad * 2;
+          obj.actualizarDimensiones(MiniFigma.instance.ctx);
+          ox = obj.x - margen;
+          oy = obj.y - obj.fontSize - margen;
+          ancho = obj.ancho + margen * 2;
+          alto = obj.altura + margen * 2;
+        } else if (obj instanceof Componente) {
+          const alturaTotal = obj.calcularAltoTotal(MiniFigma.instance.ctx);
+          ox = obj.x - margen;
+          oy = obj.y - margen;
+          ancho = obj.ancho + margen * 2;
+          alto = alturaTotal + margen * 2;
         }
 
-        if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
-          return true;
+        if (ox && oy && ancho && alto) {
+          if (x >= ox && x <= ox + ancho && y >= oy && y <= oy + alto) {
+            return true;
+          }
         }
       }
     }
