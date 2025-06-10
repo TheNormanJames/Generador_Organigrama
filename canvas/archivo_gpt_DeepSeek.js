@@ -32,6 +32,10 @@ class MiniFigma {
       mostrarLimiteExportacion: false,
       anchoLimiteExportacion: 648,
     };
+    // Agregar estas variables para el manejo del cursor
+    this.ultimaPosCursor = { x: 0, y: 0 };
+    this.ultimoMovimiento = 0; // Para el throttling
+    this.umbralMovimiento = 5; // Pixeles de movimiento para considerar actualización
 
     this.initUIElements();
     this.setupEventListeners();
@@ -297,10 +301,9 @@ class MiniFigma {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.setTransform(zoom, 0, 0, zoom, offsetCanvas.x, offsetCanvas.y);
 
-    // Dibujar límite de exportación si está activo (corregido)
+    // Dibujar límite de exportación si está activo
     if (mostrarLimiteExportacion) {
       ctx.save();
       ctx.strokeStyle = "red";
@@ -310,21 +313,58 @@ class MiniFigma {
       ctx.setLineDash([]);
       ctx.restore();
     }
+    // Dividir el dibujado en dos pasadas para mejor rendimiento
+    this.dibujarObjetosNoFlechas();
+    this.dibujarFlechas();
+  }
+  dibujarObjetosNoFlechas() {
+    const { ctx, state } = this;
 
-    // Dibujar flechas primero
-    state.objetos
-      .filter((obj) => obj instanceof Flecha)
-      .forEach((obj) => obj.dibujar(ctx));
+    // Usar requestAnimationFrame para dividir el trabajo
+    const dibujarPorPartes = (objetos, index = 0) => {
+      const chunkSize = 10; // Procesar 10 objetos por frame
+      const end = Math.min(index + chunkSize, objetos.length);
 
-    // Ajustar y dibujar otros objetos
-    state.objetos
-      .filter((obj) => !(obj instanceof Flecha))
-      .forEach((obj) => {
-        if (obj instanceof Componente) {
-          obj.ajustarPosiciones(ctx); // Ajustar con contexto válido
+      for (let i = index; i < end; i++) {
+        const obj = objetos[i];
+        if (!(obj instanceof Flecha)) {
+          if (obj instanceof Componente) {
+            obj.ajustarPosiciones(ctx);
+          }
+          obj.dibujar(ctx);
         }
-        obj.dibujar(ctx);
-      });
+      }
+
+      if (end < objetos.length) {
+        requestAnimationFrame(() => dibujarPorPartes(objetos, end));
+      }
+    };
+
+    dibujarPorPartes(state.objetos);
+  }
+  dibujarFlechas() {
+    const { ctx, state } = this;
+    const flechas = state.objetos.filter((obj) => obj instanceof Flecha);
+
+    // Procesar flechas en lotes para no bloquear el UI
+    const dibujarFlechasPorLotes = (flechas, index = 0) => {
+      const chunkSize = 5; // Procesar 5 flechas por frame
+      const end = Math.min(index + chunkSize, flechas.length);
+
+      for (let i = index; i < end; i++) {
+        const flecha = flechas[i];
+
+        // Solo actualizar checkpoints si es necesario
+        flecha.actualizarCheckpoints();
+        flecha.dibujar(ctx);
+      }
+
+      if (end < flechas.length) {
+        requestAnimationFrame(() => dibujarFlechasPorLotes(flechas, end));
+      }
+    };
+
+    dibujarFlechasPorLotes(flechas);
   }
 
   exportarImagen() {
@@ -584,14 +624,77 @@ class MiniFigma {
     );
   }
 
+  procesarMovimientoObjetos(x, y) {
+    const state = this.state;
+
+    state.objetosSeleccionados.forEach((obj) => {
+      const o = state.offsets.get(obj);
+      if (o) {
+        if (
+          obj instanceof ComponenteTituloSumario ||
+          obj instanceof ComponenteTituloCargo
+        ) {
+          const newX = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
+          const newY = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+          const dx = newX - obj.x;
+          const dy = newY - obj.y;
+          obj.mover(dx, dy);
+        } else {
+          obj.x = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
+          obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
+        }
+      }
+    });
+
+    // Actualizar flechas conectadas de manera optimizada
+    this.actualizarFlechasConectadas();
+    this.necesitaRedibujar = true;
+  }
+  actualizarFlechasConectadas() {
+    const { objetos, objetosSeleccionados } = this.state;
+    const ahora = Date.now();
+
+    // Crear conjunto de IDs de objetos seleccionados para búsqueda rápida
+    const seleccionadosIds = new Set(
+      objetosSeleccionados.map((obj) => obj.tempId)
+    );
+
+    // Actualizar solo flechas conectadas a objetos seleccionados
+    for (const obj of objetos) {
+      if (obj instanceof Flecha) {
+        if (
+          seleccionadosIds.has(obj.origen.tempId) ||
+          seleccionadosIds.has(obj.destino.tempId)
+        ) {
+          // Solo actualizar si ha pasado suficiente tiempo desde la última actualización
+          if (ahora - obj.ultimaActualizacion > 100) {
+            // 100ms de throttling
+            obj.actualizarCheckpoints();
+          }
+        }
+      }
+    }
+  }
+  // Nuevo método auxiliar para determinar si debe actualizar el cursor
+  debeActualizarCursor(x, y) {
+    return (
+      Math.abs(x - this.ultimaPosCursor.x) > this.umbralMovimiento ||
+      Math.abs(y - this.ultimaPosCursor.y) > this.umbralMovimiento
+    );
+  }
+
   handleMouseMove(e) {
     const { offsetX, offsetY } = e;
     const { x, y } = this.transformarCoordenadas(offsetX, offsetY);
     const state = this.state;
 
-    this.actualizarCursor(x, y);
+    // 1. Actualización optimizada del cursor (con umbral de movimiento)
+    if (this.debeActualizarCursor(x, y)) {
+      this.actualizarCursor(x, y);
+      this.ultimaPosCursor = { x, y };
+    }
 
-    // Redimensionamiento de objetos
+    // 2. Redimensionamiento de objetos
     if (state.arrastrando && state.circuloRedimensionando) {
       const nuevoRadio = Math.max(
         10,
@@ -604,71 +707,38 @@ class MiniFigma {
         Math.min(nuevoRadio, state.maxRadioCirculo),
         state.minRadioCirculo
       );
-      // this.dibujar();
       this.necesitaRedibujar = true;
       return;
     }
 
-    // Redimensionamiento de componentes (debe estar antes del movimiento normal)
+    // 3. Redimensionamiento de componentes
     if (state.arrastrando && state.componenteRedimensionando) {
       const nuevoAncho = Math.max(100, x - state.componenteRedimensionando.x);
       state.componenteRedimensionando.ancho = nuevoAncho;
-
-      // Actualizar ancho y recalcular posiciones
-      state.componenteRedimensionando.ajustarPosiciones();
-
-      // this.dibujar();
+      state.componenteRedimensionando.ajustarPosiciones(this.ctx);
       this.necesitaRedibujar = true;
-
       return;
     }
 
-    // Desplazamiento del canvas
+    // 4. Desplazamiento del canvas
     if (state.desplazandoCanvas) {
       const dx = e.clientX - state.ultimaPosMouse.x;
       const dy = e.clientY - state.ultimaPosMouse.y;
       state.offsetCanvas.x += dx;
       state.offsetCanvas.y += dy;
       state.ultimaPosMouse = { x: e.clientX, y: e.clientY };
-      // this.dibujar();
       this.necesitaRedibujar = true;
       return;
     }
 
-    // Movimiento de objetos
+    // 5. Movimiento de objetos con throttling
     if (state.arrastrando) {
-      state.objetosSeleccionados.forEach((obj) => {
-        const o = state.offsets.get(obj);
-        if (o) {
-          if (
-            // obj instanceof ComponenteTexto ||
-            obj instanceof ComponenteTituloSumario ||
-            obj instanceof ComponenteTituloCargo
-          ) {
-            // Mover todo el componente
-            const newX =
-              Math.round((x - o.dx) / state.gridSize) * state.gridSize;
-            const newY =
-              Math.round((y - o.dy) / state.gridSize) * state.gridSize;
-            const dx = newX - obj.x;
-            const dy = newY - obj.y;
-            obj.mover(dx, dy);
-          } else {
-            obj.x = Math.round((x - o.dx) / state.gridSize) * state.gridSize;
-            obj.y = Math.round((y - o.dy) / state.gridSize) * state.gridSize;
-          }
-        }
-        this.state.objetos.forEach((otro) => {
-          if (
-            otro instanceof Flecha &&
-            (otro.origen === obj || otro.destino === obj)
-          ) {
-            otro.actualizarCheckpoints();
-          }
-        });
-      });
-      // this.dibujar();
-      this.necesitaRedibujar = true;
+      const ahora = Date.now();
+      if (ahora - this.ultimoMovimiento > 16) {
+        // ~60fps
+        this.procesarMovimientoObjetos(x, y);
+        this.ultimoMovimiento = ahora;
+      }
     }
   }
 
@@ -1461,47 +1531,39 @@ class MiniFigma {
   }
 
   // Métodos de utilidad
+  // Versión optimizada del método actualizarCursor
   actualizarCursor(x, y) {
     const state = this.state;
+    const canvas = this.canvas;
 
-    // Primero verificar si estamos sobre un handler de redimensionamiento
+    // 1. Verificar handlers de redimensionamiento primero
     for (const obj of state.objetos) {
-      if (
-        (obj instanceof ComponenteTituloSumario ||
-          obj instanceof ComponenteTituloCargo) &&
-        this.estaSobreHandlerRedimension(x, y, obj)
-      ) {
-        this.canvas.style.cursor = "col-resize";
+      if (obj.estaSobreHandler && obj.estaSobreHandler(x, y)) {
+        if (obj instanceof Circulo) {
+          canvas.style.cursor = "nwse-resize";
+        } else {
+          canvas.style.cursor = "col-resize";
+        }
         return;
       }
     }
 
-    if (state.textoRedimensionando) {
-      this.canvas.style.cursor = "ew-resize";
-      return;
-    }
-
-    for (const obj of state.objetos) {
-      if (obj instanceof Circulo && obj.estaSobreHandler(x, y)) {
-        this.canvas.style.cursor = "nwse-resize";
-        return;
-      }
-      if (obj instanceof Texto && obj.estaSobreHandler(x, y)) {
-        this.canvas.style.cursor = "ew-resize";
-        return;
-      }
-    }
-
+    // 2. Verificar modo especial (conexión de flechas)
     if (state.conectandoFlecha) {
-      this.canvas.style.cursor = "crosshair";
+      canvas.style.cursor = "crosshair";
       return;
     }
 
+    // 3. Verificar si estamos sobre un objeto
     const hovering = state.objetos.some((obj) => obj.contienePunto(x, y));
-    this.canvas.style.cursor = state.arrastrando
+
+    // 4. Aplicar cursor según el estado
+    canvas.style.cursor = state.arrastrando
       ? "grabbing"
       : hovering
       ? "move"
+      : state.modoPanActivo
+      ? "grab"
       : "default";
   }
 
@@ -1586,6 +1648,14 @@ class Componente {
     });
 
     return alturaTotal;
+  }
+  estaSobreHandler(x, y, margen = 10) {
+    return (
+      x > this.x + this.ancho - margen &&
+      x < this.x + this.ancho + margen &&
+      y > this.y - margen &&
+      y < this.y + this.calcularAltoTotal(this.ctx) + margen
+    );
   }
 
   dibujar(ctx) {
@@ -1705,10 +1775,10 @@ class Circulo {
     return Math.hypot(x - this.x, y - this.y) < this.radio;
   }
 
-  estaSobreHandler(x, y) {
+  estaSobreHandler(x, y, margen = 8) {
     const handleX = this.x + this.radio + 5;
     const handleY = this.y;
-    return Math.hypot(x - handleX, y - handleY) <= 5;
+    return Math.hypot(x - handleX, y - handleY) <= margen;
   }
 }
 
@@ -1893,6 +1963,14 @@ class Texto {
     const lineas = this.dividirTextoEnLineas(ctx);
     return lineas.length * (this.fontSize + 4);
   }
+  estaSobreHandler(x, y, margen = 8) {
+    return (
+      x > this.x + this.ancho - margen &&
+      x < this.x + this.ancho + margen &&
+      y > this.y - this.fontSize - margen &&
+      y < this.y + margen
+    );
+  }
 
   dibujar(ctx) {
     this.actualizarDimensiones(ctx);
@@ -2000,16 +2078,160 @@ class Flecha {
     this.origen = origen;
     this.destino = destino;
     this.color = color;
-    this.margenSeguridad = 15; // Espacio alrededor de los objetos
-    this.checkpoints = []; // Puntos intermedios para rodear obstáculos
-    this.actualizarCheckpoints(); // inicial
+    this.margenSeguridad = 15;
+    this.checkpoints = [];
+    this.ultimaActualizacion = 0; // Tiempo de la última actualización
+    this.cacheValida = false; // Bandera para caché
+    this.cacheKey = ""; // Clave para verificar cambios
+
+    // Inicializar con ruta directa
+    this.checkpoints = this.calcularRutaDirecta();
   }
-  actualizarCheckpoints() {
-    // Código que calcula los puntos del path (checkpoints) aquí...
-    this.checkpoints = [
-      { x: this.origen.x, y: this.origen.y },
-      { x: this.destino.x, y: this.destino.y },
+
+  // Método optimizado para calcular ruta directa sin obstáculos
+  calcularRutaDirecta() {
+    const { x: x1, y: y1 } = this.calcularPuntoConexion(
+      this.origen,
+      this.destino
+    );
+    const { x: x2, y: y2 } = this.calcularPuntoConexion(
+      this.destino,
+      this.origen
+    );
+    return [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
     ];
+  }
+  estaSobreHandler() {
+    return false; // Las flechas no tienen handlers de redimensionamiento
+  }
+  // Método optimizado para actualizar checkpoints
+  actualizarCheckpoints() {
+    const ahora = Date.now();
+
+    // Solo recalcular si ha pasado suficiente tiempo (300ms) o si los objetos se han movido
+    if (ahora - this.ultimaActualizacion < 300 && this.cacheValida) {
+      return;
+    }
+
+    const nuevaCacheKey = `${this.origen.x}|${this.origen.y}|${this.destino.x}|${this.destino.y}`;
+    if (nuevaCacheKey === this.cacheKey && this.cacheValida) {
+      return;
+    }
+
+    // Calcular puntos de conexión
+    const { x: x1, y: y1 } = this.calcularPuntoConexion(
+      this.origen,
+      this.destino
+    );
+    const { x: x2, y: y2 } = this.calcularPuntoConexion(
+      this.destino,
+      this.origen
+    );
+
+    // Detección optimizada de obstáculos
+    const obstaculos = this.detectarObstaculosRelevantes(x1, y1, x2, y2);
+
+    if (obstaculos.length === 0) {
+      this.checkpoints = [
+        { x: x1, y: y1 },
+        { x: x2, y: y2 },
+      ];
+    } else {
+      this.checkpoints = this.calcularRutaOptima(x1, y1, x2, y2, obstaculos);
+    }
+
+    this.ultimaActualizacion = ahora;
+    this.cacheKey = nuevaCacheKey;
+    this.cacheValida = true;
+  }
+  // Método optimizado para detectar solo obstáculos relevantes
+  detectarObstaculosRelevantes(x1, y1, x2, y2) {
+    const margen = this.margenSeguridad * 2; // Margen mayor para detección inicial
+    const objetos = MiniFigma.instance.state.objetos;
+    const obstaculos = [];
+
+    // Crear bounding box ampliada alrededor de la línea
+    const minX = Math.min(x1, x2) - margen;
+    const maxX = Math.max(x1, x2) + margen;
+    const minY = Math.min(y1, y2) - margen;
+    const maxY = Math.max(y1, y2) + margen;
+
+    for (const obj of objetos) {
+      if (obj === this.origen || obj === this.destino) continue;
+
+      let ox, oy, ancho, alto;
+
+      if (obj instanceof Circulo) {
+        // Verificar intersección con círculo
+        if (this.lineaIntersectaCirculo(x1, y1, x2, y2, obj)) {
+          obstaculos.push({
+            tipo: "circulo",
+            x: obj.x,
+            y: obj.y,
+            radio: obj.radio + margen,
+          });
+        }
+      } else {
+        // Para objetos rectangulares (textos, componentes)
+        if (obj instanceof Texto) {
+          ox = obj.x - margen;
+          oy = obj.y - obj.fontSize - margen;
+          ancho = obj.ancho + margen * 2;
+          alto =
+            (obj.fontSize + 4) * (obj.texto.split("\n").length || 1) +
+            margen * 2;
+        } else if (obj instanceof Componente) {
+          ox = obj.x - margen;
+          oy = obj.y - margen;
+          ancho = obj.ancho + margen * 2;
+          const ultimoHijo = obj.hijos[obj.hijos.length - 1];
+          const lineas = ultimoHijo.texto.split("\n").length || 1;
+          alto =
+            ultimoHijo.y -
+            obj.y +
+            (ultimoHijo.fontSize + 4) * lineas +
+            margen * 2;
+        }
+
+        // Verificar intersección con bounding box
+        if (ox && oy && ancho && alto) {
+          if (
+            !(maxX < ox || minX > ox + ancho || maxY < oy || minY > oy + alto)
+          ) {
+            obstaculos.push({
+              tipo: "rectangulo",
+              x: ox,
+              y: oy,
+              ancho,
+              alto,
+            });
+          }
+        }
+      }
+    }
+
+    return obstaculos;
+  }
+  // Método optimizado para intersección con círculos
+  lineaIntersectaCirculo(x1, y1, x2, y2, circulo) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const a = dx * dx + dy * dy;
+    const b = 2 * (dx * (x1 - circulo.x) + dy * (y1 - circulo.y));
+    const c =
+      (x1 - circulo.x) * (x1 - circulo.x) +
+      (y1 - circulo.y) * (y1 - circulo.y) -
+      circulo.radio * circulo.radio;
+    const disc = b * b - 4 * a * c;
+
+    if (disc < 0) return false;
+
+    const t1 = (-b + Math.sqrt(disc)) / (2 * a);
+    const t2 = (-b - Math.sqrt(disc)) / (2 * a);
+
+    return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
   }
 
   dibujar(ctx) {
