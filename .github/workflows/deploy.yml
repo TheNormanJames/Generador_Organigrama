@@ -3,27 +3,26 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - normanCanvas # Tu rama personalizada
+      - normanCanvas # ← tu rama personalizada
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup publish folder
+      - name: Setup publish directory
         run: |
           mkdir public
-          cp -r ./dist/* ./public/
-          # Elimina carpetas que pueden causar errores
-          rm -rf ./public/.git ./public/.github
+          cp -r dist/* public/
+          rm -rf public/.git public/.github
 
-      - name: List public folder
+      - name: List files for debugging
         run: ls -la public
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages 🚀
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
