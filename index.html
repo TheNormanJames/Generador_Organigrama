@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MiniFigma</title>
+
+    <!--typekit-->
+    <link rel="stylesheet" href="https://use.typekit.net/mhq4nhy.css" />
+
+    <!--CHAT GPT OPEN AI--->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="./css/style_CHAT.css?0864442"
+    />
+    <!--CHAT GPT OPEN AI--->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <nav class="fixed top-0 left-0 w-full bg-white shadow-md z-10">
+      <div
+        class="flex flex-wrap items-center justify-center space-x-2 p-2 overflow-x-auto"
+      >
+        <button
+          id="circleBtn"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Círculo
+        </button>
+        <!-- En la sección de botones, agrega esto: -->
+        <button
+          id="btnExportarImagen"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Exportar Imagen
+        </button>
+        <button
+          id="btnToggleLimite"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Mostrar Límite
+        </button>
+
+        <button
+          id="btnTituloSumario"
+          class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+        >
+          Título + Sumario
+        </button>
+
+        <button
+          id="btnTituloCargo"
+          class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition"
+        >
+          Título + Cargo + Texto
+        </button>
+
+        <button
+          id="circleFlecha"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Flecha
+        </button>
+        <button
+          id="btnCancelarFlecha"
+          class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+        >
+          Cancelar Flecha
+        </button>
+        <button
+          id="btnFrente"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Al Frente
+        </button>
+        <button
+          id="btnFondo"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Al Fondo
+        </button>
+        <button
+          id="btnExportar"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Exportar
+        </button>
+        <label
+          for="btnImportar"
+          class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >Importar</label
+        >
+        <input type="file" id="btnImportar" class="hidden" />
+
+        <div class="flex space-x-1 ml-4">
+          <button id="btnBold" class="btn-format" title="Negrita (Ctrl+B)">
+            <strong>B</strong>
+          </button>
+          <button id="btnItalic" class="btn-format" title="Cursiva (Ctrl+I)">
+            <em>I</em>
+          </button>
+          <button
+            id="btnAlignLeft"
+            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+            title="Alinear izquierda"
+          >
+            ↖
+          </button>
+          <button
+            id="btnAlignCenter"
+            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+            title="Centrar texto"
+          >
+            ↔
+          </button>
+          <button
+            id="btnAlignRight"
+            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+            title="Alinear derecha"
+          >
+            ↗
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <canvas id="miCanvas" width="500" height="500"></canvas>
+
+    <!----CHAT OPEN AI CARLOS---->
+    <div class="contenedor_principal_chat">
+      <div class="chat-container">
+        <div class="base_cinta_informativa">
+          <p class="texto_uso">Estas usando</p>
+          <img src="./img/google.png" class="logo_google_informativo" />
+          <p class="texto_uso textoModo"></p>
+        </div>
+
+        <img
+          src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_cerrar.png"
+          class="icono_cerrar"
+        />
+        <div class="chat-window" id="chatWindow">
+          <div class="Mensaje user2">
+            <h2></h2>
+            <p></p>
+          </div>
+
+          <div class="base_seleccion_motor">
+            <p class="icono_cerrar_motor_busqueda">X</p>
+            <p class="espacio_txt">Seleccione el motor de busqueda:</p>
+            <div class="contenedor_motor_busqueda">
+              <img src="./img/icono_volver.jpg" class="icono_volver" />
+              <img src="./img/google.png" class="logo_google" />
+              <img src="./img/openai.png" class="logo_AI" />
+            </div>
+
+            <!---seleccionar btns google-->
+            <div class="base_botones_google">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto texto_google">
+                Busco texto
+              </button>
+              <button type="button" class="boton_imagen texto_imagen">
+                Busco imagen
+              </button>
+            </div>
+
+            <!---seleccionar btns google-->
+            <div class="base_botones_AI">
+              <!--<p class="espacio_txt">Selecciona lo que quieres buscar</p>-->
+              <button type="button" class="boton_texto btn_txt_AI texto_AI">
+                Busco texto
+              </button>
+              <button
+                type="button"
+                class="boton_imagen btn_imagen_AI imagen_AI"
+              >
+                Busco imagen
+              </button>
+            </div>
+          </div>
+
+          <div class="base_contendor_loading">
+            <img src="./img/loading_imagen.gif" class="loading_chat" />
+          </div>
+        </div>
+
+        <form id="chatForm">
+          <input
+            type="text"
+            id="chatInput"
+            placeholder="¿Que buscas?"
+            autocomplete="off"
+            disabled
+            class="input_mensaje"
+          />
+          <button type="submit" class="boton_enviar">Enviar</button>
+        </form>
+      </div>
+
+      <img
+        src="https://www.eltiempo.com/infografias/2016/organigrama_chat_GTP/img/icono_chat.png"
+        class="icono_chat"
+      />
+    </div>
+    <!----FIN CHAT OPEN AI CARLOS---->
+
+    <!-- <script type="module" src="./archivo_gpt.js"></script> -->
+    <script type="module" src="./archivo_gpt_DeepSeek.js"></script>
+
+    <style>
+      .btn {
+        @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition;
+        font-family: sans-serif;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      canvas {
+        margin-top: 60px; /* espacio para el navbar */
+        background: #f4f4f4;
+        display: block;
+      }
+      /* Estilos para los botones de formato */
+      .btn-format {
+        @apply px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition;
+        min-width: 32px;
+        font-family: Arial, sans-serif;
+      }
+
+      /* Iconos de alineación */
+      .align-icon {
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      /* Estilo para botones activos */
+      .btn-format.active {
+        background-color: #3b82f6 !important;
+        color: white !important;
+      }
+
+      /* Estilos existentes para los botones */
+      .btn-format {
+        @apply px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition;
+        min-width: 32px;
+        font-family: Arial, sans-serif;
+      }
+    </style>
+  </body>
+
+  <!--funcion Open AI-->
+  <script type="text/javascript" src="./js/Funcion_ChatOpenAi.js"></script>
+</html>
