@@ -1,20 +1,33 @@
-name: Build and Deploy
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
-      - normanCanvas
+      - normanCanvas # O cambia a 'master' si es tu rama principal
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@v4
+      # Si tu sitio está en una carpeta como "dist", usa esto:
+      - name: Copy site content
+        run: |
+          mkdir public
+          cp -r ./dist/* public/
+
+      # Si tu HTML/CSS está directamente en la raíz del repo, usa esto en su lugar:
+      # - name: Copy site content
+      #   run: |
+      #     mkdir public
+      #     cp -r ./* public/
+      #     rm -rf public/.git public/.github
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          branch: gh-pages
-          # github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
