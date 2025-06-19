@@ -16,5 +16,5 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          # github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./canvas
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
